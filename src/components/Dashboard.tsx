@@ -671,6 +671,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         variants={{
           open: { 
             x: 0,
+            pointerEvents: 'auto',
             transition: { 
               type: 'spring', 
               damping: 25, 
@@ -681,6 +682,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           },
           closed: { 
             x: -256,
+            pointerEvents: 'none',
             transition: { 
               type: 'spring', 
               damping: 25, 
@@ -688,7 +690,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               staggerDirection: -1
             } 
           },
-          desktop: { x: 0 }
+          desktop: { 
+            x: 0,
+            pointerEvents: 'auto'
+          }
         }}
         className="fixed lg:relative inset-y-0 left-0 w-64 border-r border-zinc-900 flex flex-col p-6 space-y-8 bg-black z-50 backdrop-blur-xl"
       >
@@ -2008,9 +2013,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
+              <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50 flex-shrink-0">
                 <h2 className="text-xl font-bold">Nova Transação</h2>
                 <button 
                   onClick={() => setShowAdd(false)}
@@ -2020,7 +2025,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 </button>
               </div>
 
-              <form onSubmit={handleAddTransaction} className="p-6 space-y-5">
+              <form onSubmit={handleAddTransaction} className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
                 <div className="flex p-1 bg-zinc-800 rounded-xl">
                   <button
                     type="button"
@@ -2147,9 +2152,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
+              <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50 flex-shrink-0">
                 <h2 className="text-xl font-bold">Nova Conta</h2>
                 <button 
                   onClick={() => setShowAddAccount(false)}
@@ -2159,7 +2164,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 </button>
               </div>
 
-              <form onSubmit={handleAddAccount} className="p-6 space-y-5">
+              <form onSubmit={handleAddAccount} className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Nome da Conta</label>
                   <input 
@@ -2248,7 +2253,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               exit={{ scale: 0.95, opacity: 0, x: 20 }}
               className="relative w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
+              <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50 flex-shrink-0">
                 <div className="flex items-center space-x-4">
                   <div 
                     className="w-12 h-12 rounded-xl flex items-center justify-center border"
