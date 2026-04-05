@@ -549,9 +549,13 @@ export const checkMilestones = async (user: User, accounts: any[], transactions:
           if (daysPassed > (data.current || 0)) {
             await setMissionProgress(user.uid, 'Paciência de Ouro', daysPassed);
           }
-          await updateDoc(doc(db, `users/${user.uid}/missions`, missionDoc.id), {
-            lastBalanceCheck: Timestamp.now()
-          });
+          
+          const lastCheckMillis = data.lastBalanceCheck?.toMillis() || 0;
+          if (now - lastCheckMillis > 1000 * 60 * 60 * 24) {
+            await updateDoc(doc(db, `users/${user.uid}/missions`, missionDoc.id), {
+              lastBalanceCheck: Timestamp.fromDate(new Date(now))
+            });
+          }
         }
       } else if (data.balanceStartDate) {
         await updateDoc(doc(db, `users/${user.uid}/missions`, missionDoc.id), {

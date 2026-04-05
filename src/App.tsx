@@ -4,8 +4,7 @@ import { Auth } from './components/Auth';
 import { Dashboard } from './components/Dashboard';
 import { User } from './types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Loader2 } from 'lucide-react';
-
+import { Dessert, Loader2 } from 'lucide-react';
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -16,7 +15,7 @@ export default function App() {
     const unsubscribeAuth = onAuthStateChanged(auth, async (authUser) => {
       if (authUser) {
         const userDocRef = doc(db, 'users', authUser.uid);
-        
+
         // Check if user exists, if not create it
         const userDoc = await getDoc(userDocRef);
         if (!userDoc.exists()) {
@@ -42,6 +41,10 @@ export default function App() {
           if (docSnap.exists()) {
             const userData = docSnap.data() as User;
             
+            if (!userData.uid) {
+              userData.uid = (userData as any).id || docSnap.id;
+            }
+
             // Migration: Set trial for existing users who don't have it
             if (!userData.trialEndsAt) {
               const createdAtMs = userData.createdAt instanceof Date
@@ -51,14 +54,14 @@ export default function App() {
                   : Date.now();
               const trialEndsAt = new Date(createdAtMs);
               trialEndsAt.setDate(trialEndsAt.getDate() + 30);
-              
+
               await updateDoc(userDocRef, {
                 trialEndsAt: trialEndsAt,
                 subscriptionStatus: userData.isPaid ? 'active' : 'trialing'
               });
               return; // onSnapshot will trigger again
             }
-            
+
             setUser(userData);
           }
           setLoading(false);

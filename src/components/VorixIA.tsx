@@ -84,7 +84,7 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
     setLastMessageTime(now);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
       const model = ai.models.get({ model: 'gemini-3-flash-preview' });
 
       // ... existing data preparation ...

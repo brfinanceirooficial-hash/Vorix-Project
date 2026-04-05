@@ -152,7 +152,7 @@ export const RadarView: React.FC<RadarViewProps> = ({ user }) => {
       setIsLoadingTips(true);
     }
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
       
       const prompt = `
         Gere 3 dicas de investimentos reais e atuais para o mercado brasileiro hoje. 

@@ -321,7 +321,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   };
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.uid) return;
 
     const accountsQuery = query(collection(db, 'users', user.uid, 'accounts'));
     const transactionsQuery = query(collection(db, 'users', user.uid, 'transactions'), orderBy('date', 'desc'), limit(300));
@@ -382,27 +382,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       unsubGoals();
       window.removeEventListener('resize', checkMobile);
     };
-  }, [user]);
+  }, [user?.uid]);
 
   // Auto-generate alerts if none exist
   useEffect(() => {
-    if (!user || alerts.length > 0 || transactions.length === 0 || accounts.length === 0) return;
+    if (!user?.uid || alerts.length > 0 || transactions.length === 0 || accounts.length === 0) return;
     
     const checkAndGenerateAlerts = async () => {
       await generateProactiveAlerts(user, accounts, transactions, alerts);
     };
     checkAndGenerateAlerts();
-  }, [user, alerts.length, transactions.length, accounts.length]);
+  }, [user?.uid, alerts.length, transactions.length, accounts.length]);
 
   // Check milestones whenever accounts, transactions, notes or goals change
   useEffect(() => {
-    if (!user || accounts.length === 0) return;
+    if (!user?.uid || accounts.length === 0) return;
     
-    const triggerMilestones = async () => {
+    // debounce check milestones context so it doesn't run excessively
+    const timeoutId = setTimeout(async () => {
       await checkMilestones(user, accounts, transactions, notes, goals);
-    };
-    triggerMilestones();
-  }, [user, accounts, transactions, notes, goals]);
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, [user?.uid, accounts, transactions, notes, goals]);
 
   useEffect(() => {
     if (missions.length > 0) {
@@ -414,9 +416,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     }
   }, [missions]);
 
-  const handleCloseCelebration = async () => {
+  const handleCloseCelebration = () => {
     if (celebratingMission) {
-      await markMissionAsNotified(user.uid, celebratingMission.id);
+      markMissionAsNotified(user?.uid || '', celebratingMission.id).catch(console.error);
     }
     setIsCelebrationOpen(false);
     setCelebratingMission(null);
@@ -533,7 +535,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   };
 
   const handleExportPDF = async () => {
-    if (!user || transactions.length === 0) return;
+    if (!user) return;
+    if (transactions.length === 0) {
+      alert("Você precisa adicionar pelo menos uma transação para gerar um relatório.");
+      return;
+    }
 
     setIsExporting(true);
 
