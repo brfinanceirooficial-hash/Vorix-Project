@@ -57,7 +57,7 @@ import { SubscriptionView } from './SubscriptionView';
 import { generateProactiveAlerts } from '../lib/alerts';
 import { initializeUserGamification, updateMissionProgress, checkAndUnlockBadge, checkMilestones, markMissionAsNotified } from '../services/gamificationService';
 import { MissionCelebration } from './MissionCelebration';
-
+import { generatePDFReport } from '../utils/pdfGenerator';
 interface DashboardProps {
   user: User;
 }
@@ -544,15 +544,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     setIsExporting(true);
 
     try {
-      // Filter transactions by date range
-      const start = new Date(exportStartDate);
-      const end = new Date(exportEndDate);
-      end.setHours(23, 59, 59, 999);
+      // Filter transactions by date range in local time to avoid timezone offset issues
+      const start = new Date(`${exportStartDate}T00:00:00`);
+      const end = new Date(`${exportEndDate}T23:59:59.999`);
 
       const filteredTransactions = transactions.filter(t => {
-        const tDate = new Date(t.date?.seconds * 1000);
+        const tTime = t.date?.seconds ? t.date.seconds * 1000 : new Date(t.date).getTime();
+        if (isNaN(tTime)) return false;
+        const tDate = new Date(tTime);
         return tDate >= start && tDate <= end;
-      }).sort((a, b) => a.date.seconds - b.date.seconds);
+      }).sort((a, b) => {
+        const aTime = a.date?.seconds ? a.date.seconds * 1000 : new Date(a.date).getTime();
+        const bTime = b.date?.seconds ? b.date.seconds * 1000 : new Date(b.date).getTime();
+        return aTime - bTime;
+      });
 
       const periodIncome = filteredTransactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
       const periodExpenses = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
@@ -562,16 +567,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         user: { username: user.username },
         transactions: filteredTransactions.map(t => {
           const account = accounts.find(a => a.id === t.accountId);
+          const tTime = t.date?.seconds ? t.date.seconds * 1000 : new Date(t.date).getTime();
           return {
             description: t.description,
             category: t.category,
             type: t.type,
             accountName: account ? account.name : 'N/A',
             amountFormatted: formatCurrency(t.amount).replace('R$', '').trim(),
-            dateFormatted: new Date(t.date?.seconds * 1000).toLocaleDateString('pt-BR')
+            dateFormatted: new Date(tTime).toLocaleDateString('pt-BR')
           };
         }),
-        dateRange: `${new Date(exportStartDate).toLocaleDateString('pt-BR')} até ${new Date(exportEndDate).toLocaleDateString('pt-BR')}`,
+        dateRange: `${start.toLocaleDateString('pt-BR')} até ${end.toLocaleDateString('pt-BR')}`,
         totalBalance: formatCurrency(totalBalance),
         monthlyIncome: formatCurrency(monthlyIncome),
         monthlyExpenses: formatCurrency(monthlyExpenses),
@@ -580,23 +586,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         netChange: formatCurrency(netChange)
       };
 
-      const response = await fetch('/api/export-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) throw new Error('Falha ao gerar PDF');
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `relatorio-vorix-${user.username}-${new Date().toISOString().split('T')[0]}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      
+      const response = generatePDFReport(payload);
       setShowExportModal(false);
     } catch (error: any) {
       console.error('Export error:', error);
