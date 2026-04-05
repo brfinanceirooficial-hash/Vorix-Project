@@ -696,8 +696,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             }}
             className="flex items-center space-x-3"
           >
-            <div className="w-10 h-10 bg-[#ff4d00] rounded-xl flex items-center justify-center shadow-lg shadow-[#ff4d00]/20">
-              <TrendingUp className="text-white w-6 h-6" />
+            <div className="w-10 h-10 bg-[#ff4d00] rounded-xl overflow-hidden shadow-lg shadow-[#ff4d00]/20">
+              <img src="/favicon.png" alt="Vorix Logo" className="w-full h-full object-cover" />
             </div>
             <span className="text-xl font-bold tracking-tighter text-white">VORIX</span>
           </motion.div>

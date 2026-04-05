@@ -73,8 +73,8 @@ export const Auth: React.FC = () => {
         className="max-w-md w-full space-y-8 relative z-10"
       >
         <div className="flex flex-col items-center space-y-4 text-center">
-          <div className="w-20 h-20 bg-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-600/20">
-            <TrendingUp className="text-white w-10 h-10" />
+          <div className="w-20 h-20 bg-orange-600 rounded-2xl overflow-hidden shadow-lg shadow-orange-600/20">
+            <img src="/favicon.png" alt="Vorix Logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-4xl font-bold text-white tracking-tight">VORIX</h1>
           <p className="text-zinc-400">Gestão Financeira Inteligente com IA</p>
