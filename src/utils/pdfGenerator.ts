@@ -154,7 +154,45 @@ export const generatePDFReport = (payload: any) => {
     );
   }
 
-  // Save PDF
+  // Save PDF - Robust Mobile Support
   const username = payload.user?.username || 'cliente';
-  doc.save(`relatorio-vorix-${username.replace(/\\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`);
+  const filename = `relatorio-vorix-${username.replace(/\\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+  
+  // Try Web Share API for Mobile Devices
+  try {
+    const pdfBlob = doc.output('blob');
+    
+    // Feature detect Web Share API with files
+    if (navigator.share && navigator.canShare) {
+      const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+      if (navigator.canShare({ files: [file] })) {
+        navigator.share({
+          title: 'Relatório Financeiro Vorix',
+          text: 'Aqui está seu relatório financeiro.',
+          files: [file]
+        }).catch((err) => {
+          console.log('Share was cancelled or failed', err);
+          // Fallback to normal download if share fails
+          doc.save(filename);
+        });
+        return; // Exit if share is invoked
+      }
+    }
+    
+    // Fallback for when Web Share API is missing (e.g. desktop or unsupported browers)
+    // For iOS devices specifically, sometimes window.open is better if doc.save is blocked
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    
+    if (isIOS) {
+      const fileURL = URL.createObjectURL(pdfBlob);
+      window.open(fileURL, '_blank');
+      // Revoke the object URL after a delay to ensure it had time to load
+      setTimeout(() => URL.revokeObjectURL(fileURL), 3000);
+    } else {
+      doc.save(filename);
+    }
+  } catch (error) {
+    console.error('Error saving PDF:', error);
+    doc.save(filename); // Ultimate fallback
+  }
 };
