@@ -89,6 +89,10 @@ const snakeToCamelMap: Record<string, string> = {
   last_balance_check: 'lastBalanceCheck',
   long_description: 'longDescription',
   is_custom: 'isCustom',
+  birth_date: 'birthDate',
+  phone: 'phone',
+  whatsapp_connected: 'whatsappConnected',
+  whatsapp_number: 'whatsappNumber',
 };
 
 const camelToSnakeMap: Record<string, string> = Object.fromEntries(
@@ -403,6 +407,7 @@ export const setDoc = async (docPath: string, data: any) => {
       'fixed_salary_amount', 'fixed_salary_day', 'created_at', 'trial_ends_at',
       'subscription_status', 'coupon_used', 'trial_report_used', 'ai_requests_count',
       'last_ai_request_date', 'vorix_reward_claimed', 'notification_settings',
+      'birth_date', 'phone', 'whatsapp_connected', 'whatsapp_number',
     ]);
     const filteredData: Record<string, any> = {};
     for (const [k, v] of Object.entries(snakeData)) {
@@ -489,6 +494,7 @@ export const updateDoc = async (docPath: string, data: any) => {
       'fixed_salary_amount', 'fixed_salary_day', 'created_at', 'trial_ends_at',
       'subscription_status', 'coupon_used', 'trial_report_used', 'ai_requests_count',
       'last_ai_request_date', 'vorix_reward_claimed', 'notification_settings',
+      'birth_date', 'phone', 'whatsapp_connected', 'whatsapp_number',
     ]);
     finalData = {};
     for (const [k, v] of Object.entries(snakeData)) {
@@ -638,6 +644,26 @@ export const getDocFromServer = getDoc;
 export function handleStorageError(error: unknown, operationType: OperationType, path: string | null) {
   console.error('Supabase Storage Error:', error, operationType, path);
 }
+
+// ============================================
+// EXPORTS — Storage Functions
+// ============================================
+export const uploadAvatar = async (userId: string, file: File): Promise<string> => {
+  const fileExt = file.name.split('.').pop();
+  const filePath = `${userId}/avatar-${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, file);
+
+  if (uploadError) throw uploadError;
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(filePath);
+
+  return publicUrl;
+};
 
 // ============================================
 // EXPORTS — Firebase compat stubs

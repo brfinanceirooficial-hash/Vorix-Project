@@ -15,6 +15,10 @@ export interface User {
   aiRequestsCount?: number;
   lastAiRequestDate?: string; // YYYY-MM-DD
   vorixRewardClaimed?: boolean;
+  birthDate?: string;
+  phone?: string;
+  whatsappConnected?: boolean;
+  whatsappNumber?: string;
 }
 
 export interface Account {

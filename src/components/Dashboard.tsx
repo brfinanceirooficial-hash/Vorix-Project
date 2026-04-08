@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { User, Account, Transaction, Alert, Mission } from '../types';
-import { db, collection, onSnapshot, query, orderBy, limit, auth, signOut, addDoc, deleteDoc, updateDoc, doc, getDoc, Timestamp, OperationType, handleStorageError, updateProfile, updateEmail, updatePassword } from '../lib/storage';
+import { db, collection, onSnapshot, query, orderBy, limit, auth, signOut, addDoc, deleteDoc, updateDoc, doc, getDoc, Timestamp, OperationType, handleStorageError, updateProfile, updateEmail, updatePassword, uploadAvatar } from '../lib/storage';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Wallet,
@@ -43,7 +43,9 @@ import {
   Check,
   Eye,
   EyeOff,
-  StickyNote
+  StickyNote,
+  Camera,
+  MessageCircle
 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -173,11 +175,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const [exportStartDate, setExportStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
   const [exportEndDate, setExportEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [isExporting, setIsExporting] = useState(false);
-  const [editingSetting, setEditingSetting] = useState<'profile' | 'security' | 'notifications' | 'integrations' | null>(null);
+  const [editingSetting, setEditingSetting] = useState<'profile' | 'security' | 'notifications' | 'integrations' | 'whatsapp' | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [settingForm, setSettingForm] = useState({
     name: user.username || '',
     email: user.email || '',
     photoURL: user.photoURL || '',
+    birthDate: user.birthDate || '',
+    phone: user.phone || '',
+    whatsappNumber: user.whatsappNumber || '',
+    whatsappConnected: user.whatsappConnected || false,
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
@@ -218,6 +225,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     }
   }, [showAdd]);
 
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.uid) return;
+
+    setIsSavingSetting(true);
+    setSettingError(null);
+    try {
+      const publicUrl = await uploadAvatar(user.uid, file);
+      setSettingForm(prev => ({ ...prev, photoURL: publicUrl }));
+      
+      // Update DB immediately for the photo
+      await updateDoc(doc(db, 'users', user.uid), {
+        photoURL: publicUrl
+      });
+      
+      setSettingSuccess('Foto atualizada com sucesso!');
+      setTimeout(() => setSettingSuccess(null), 3000);
+    } catch (error: any) {
+      setSettingError('Erro ao fazer upload da foto: ' + error.message);
+    } finally {
+      setIsSavingSetting(false);
+    }
+  };
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingSetting(true);
@@ -235,7 +266,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         // Update Firestore User Document
         await updateDoc(doc(db, 'users', user.uid), {
           username: settingForm.name,
-          photoURL: settingForm.photoURL
+          photoURL: settingForm.photoURL,
+          birthDate: settingForm.birthDate,
+          phone: settingForm.phone,
+          whatsappNumber: settingForm.whatsappNumber,
+          whatsappConnected: settingForm.whatsappConnected,
         });
 
         // Update Email if changed
@@ -1335,6 +1370,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                         { id: 'security', label: 'Segurança', desc: 'Senha e autenticação em duas etapas', icon: Shield },
                         { id: 'subscription', label: 'Assinatura', desc: 'Gerencie seu plano e pagamentos', icon: Star },
                         { id: 'notifications', label: 'Notificações', desc: 'Alertas push e e-mails', icon: Bell },
+                        { id: 'whatsapp', label: 'WhatsApp', desc: 'Alertas de gastos e dicas financeiras', icon: MessageCircle },
                         { id: 'integrations', label: 'Integrações', desc: 'Conectar novos bancos e serviços', icon: LinkIcon },
                       ].map((item) => (
                         <button 
@@ -1380,28 +1416,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
                   {editingSetting === 'profile' && (
                     <form onSubmit={handleUpdateProfile} className="space-y-6">
-                      <div className="flex items-center space-x-6">
-                        <div className="relative group">
-                          <div className="w-24 h-24 bg-zinc-800 rounded-3xl overflow-hidden border-2 border-zinc-700 group-hover:border-orange-500 transition-all">
+                      <div className="flex flex-col items-center space-y-4">
+                        <div 
+                          onClick={() => fileInputRef.current?.click()}
+                          className="relative group cursor-pointer"
+                        >
+                          <div className="w-28 h-28 bg-zinc-800 rounded-3xl overflow-hidden border-2 border-zinc-700 group-hover:border-orange-500 transition-all">
                             {settingForm.photoURL ? (
                               <img src={settingForm.photoURL} alt="Preview" className="w-full h-full object-cover" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <UserIcon className="w-10 h-10 text-zinc-600" />
+                                <UserIcon className="w-12 h-12 text-zinc-600" />
                               </div>
                             )}
                           </div>
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all rounded-3xl">
+                            <Camera className="w-8 h-8 text-white" />
+                          </div>
+                          {isSavingSetting && (
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-3xl">
+                              <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+                            </div>
+                          )}
                         </div>
-                        <div className="flex-1 space-y-2">
-                          <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">URL da Foto</label>
-                          <input 
-                            type="text"
-                            value={settingForm.photoURL}
-                            onChange={(e) => setSettingForm({ ...settingForm, photoURL: e.target.value })}
-                            placeholder="https://exemplo.com/foto.jpg"
-                            className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 transition-all"
-                          />
-                        </div>
+                        <p className="text-zinc-500 text-xs font-medium">Clique para alterar a foto</p>
+                        <input 
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={onFileChange}
+                          accept="image/*"
+                          className="hidden"
+                        />
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1411,7 +1456,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                             type="text"
                             value={settingForm.name}
                             onChange={(e) => setSettingForm({ ...settingForm, name: e.target.value })}
-                            className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 transition-all"
+                            className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 transition-all font-medium"
                           />
                         </div>
                         <div className="space-y-2">
@@ -1420,7 +1465,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                             type="email"
                             value={settingForm.email}
                             onChange={(e) => setSettingForm({ ...settingForm, email: e.target.value })}
-                            className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 transition-all"
+                            className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 transition-all font-medium"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Data de Nascimento</label>
+                          <input 
+                            type="date"
+                            value={settingForm.birthDate}
+                            onChange={(e) => setSettingForm({ ...settingForm, birthDate: e.target.value })}
+                            className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 transition-all font-medium"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Telefone</label>
+                          <input 
+                            type="tel"
+                            placeholder="(00) 00000-0000"
+                            value={settingForm.phone}
+                            onChange={(e) => setSettingForm({ ...settingForm, phone: e.target.value })}
+                            className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 transition-all font-medium"
                           />
                         </div>
                       </div>
@@ -1545,6 +1609,63 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                         <Plus className="w-5 h-5 mr-2" />
                         Adicionar Nova Integração
                       </button>
+                    </div>
+                  )}
+
+                  {editingSetting === 'whatsapp' && (
+                    <div className="space-y-8">
+                      <div className="flex flex-col items-center text-center space-y-4">
+                        <div className="w-16 h-16 bg-green-500/10 rounded-2xl flex items-center justify-center border border-green-500/20">
+                          <MessageCircle className="w-8 h-8 text-green-500" />
+                        </div>
+                        <div className="space-y-1">
+                          <h3 className="text-xl font-bold">Conectar WhatsApp</h3>
+                          <p className="text-zinc-500 text-sm max-w-xs">Receba dicas financeiras automáticas e alertas de gastos direto no seu celular.</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-6">
+                        <div className="space-y-3">
+                          <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Número do WhatsApp</label>
+                          <div className="flex space-x-2">
+                            <input 
+                              type="tel"
+                              placeholder="+55 (11) 99999-9999"
+                              value={settingForm.whatsappNumber}
+                              onChange={(e) => setSettingForm({ ...settingForm, whatsappNumber: e.target.value })}
+                              className="flex-1 bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 transition-all font-medium"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-zinc-800/50 rounded-2xl border border-zinc-800 flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <p className="font-bold text-sm">Ativar Notificações</p>
+                            <p className="text-zinc-500 text-xs">Receber dicas e alertas de gastos</p>
+                          </div>
+                          <button 
+                            onClick={() => setSettingForm({ ...settingForm, whatsappConnected: !settingForm.whatsappConnected })}
+                            className={`w-12 h-6 rounded-full transition-all relative ${settingForm.whatsappConnected ? 'bg-green-600' : 'bg-zinc-700'}`}
+                          >
+                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settingForm.whatsappConnected ? 'right-1' : 'left-1'}`} />
+                          </button>
+                        </div>
+
+                        <button 
+                          onClick={handleUpdateProfile}
+                          disabled={isSavingSetting}
+                          className="w-full py-4 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 rounded-2xl font-bold transition-all flex items-center justify-center"
+                        >
+                          {isSavingSetting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Salvar Configurações'}
+                        </button>
+
+                        <div className="p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10">
+                          <p className="text-[10px] text-blue-400 text-center leading-relaxed">
+                            Ao ativar, você concorda em receber mensagens automáticas da Vorix IA. 
+                            Você poderá desativar este serviço a qualquer momento.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </motion.div>
