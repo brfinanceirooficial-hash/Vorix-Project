@@ -267,9 +267,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         await updateDoc(doc(db, 'users', user.uid), {
           username: settingForm.name,
           photoURL: settingForm.photoURL,
-          birthDate: settingForm.birthDate,
-          phone: settingForm.phone,
-          whatsappNumber: settingForm.whatsappNumber,
+          birthDate: settingForm.birthDate || null,
+          phone: settingForm.phone || null,
+          whatsappNumber: settingForm.whatsappNumber || null,
           whatsappConnected: settingForm.whatsappConnected,
         });
 
