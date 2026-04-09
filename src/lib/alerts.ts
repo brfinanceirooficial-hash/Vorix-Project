@@ -37,6 +37,9 @@ export const generateProactiveAlerts = async (
       - Saídas (Mês): ${formatCurrency(monthlyExpenses)}
       - Gastos por Categoria: ${JSON.stringify(categoryTotals)}
       - Transações Recentes: ${JSON.stringify(transactions.slice(0, 20))}
+      - Streak Atual: ${user.streak?.currentStreak || 0} dias
+      - Recorde de Streak: ${user.streak?.longestStreak || 0} dias
+      - Última Atividade: ${user.streak?.lastActivityDate || 'Nunca'}
       
       REGRAS PARA OS ALERTAS:
       1. Identifique padrões de gastos excessivos.

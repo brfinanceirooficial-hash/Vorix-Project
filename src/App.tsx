@@ -5,6 +5,7 @@ import { Dashboard } from './components/Dashboard';
 import { User } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dessert, Loader2 } from 'lucide-react';
+import { checkUserInactivity } from './services/streakService';
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,6 +64,11 @@ export default function App() {
             }
 
             setUser(userData);
+            
+            // Verificação de inatividade do streak
+            if (userData.uid) {
+              checkUserInactivity(userData);
+            }
           }
           setLoading(false);
         });

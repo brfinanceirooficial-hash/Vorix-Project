@@ -59,6 +59,8 @@ import { SubscriptionView } from './SubscriptionView';
 import { generateProactiveAlerts } from '../lib/alerts';
 import { initializeUserGamification, updateMissionProgress, checkAndUnlockBadge, checkMilestones, markMissionAsNotified } from '../services/gamificationService';
 import { MissionCelebration } from './MissionCelebration';
+import { Flame } from 'lucide-react';
+import { updateStreakOnActivity } from '../services/streakService';
 import { generatePDFReport } from '../utils/pdfGenerator';
 interface DashboardProps {
   user: User;
@@ -198,6 +200,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const [settingError, setSettingError] = useState<string | null>(null);
   const [settingSuccess, setSettingSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  const streakInfo = useMemo(() => {
+    const s = user.streak || { currentStreak: 0, longestStreak: 0, lastActivityDate: '', streakUpdatedToday: false };
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const isUpdatedToday = s.lastActivityDate === todayStr;
+    const isLate = today.getHours() >= 18;
+    const needsUpdate = !isUpdatedToday && isLate;
+    
+    let colorClass = 'text-zinc-500';
+    let glowClass = '';
+    let animate = {};
+
+    if (s.currentStreak > 0) {
+      if (s.currentStreak >= 7) {
+        colorClass = 'text-orange-500';
+        glowClass = 'drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]';
+        animate = { scale: [1, 1.1, 1] };
+      } else if (s.currentStreak >= 3) {
+        colorClass = 'text-orange-500';
+        animate = { scale: [1, 1.05, 1] };
+      } else {
+        colorClass = 'text-orange-400';
+      }
+    }
+
+    if (needsUpdate) {
+      colorClass = 'text-rose-500';
+      animate = { scale: [1, 1.2, 1] };
+    }
+
+    return { ...s, isUpdatedToday, needsUpdate, colorClass, glowClass, animate };
+  }, [user.streak]);
 
   const isTrialExpired = useMemo(() => {
     if (user.subscriptionStatus === 'active') return false;
@@ -477,6 +512,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         description,
         date: Timestamp.fromDate(new Date(date + 'T00:00:00'))
       });
+
+      // 1.5. Atualiza o Streak do usuário
+      if (user?.uid) {
+        await updateStreakOnActivity(user.uid, user.streak);
+      }
 
       // 2. Atualiza o saldo da conta bancária correspondente
       const accountRef = doc(db, `users/${user.uid}/accounts`, accountId);
@@ -909,6 +949,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                     {user.vorixScore} PONTOS
                   </motion.span>
                 </div>
+                <div className="bg-zinc-900/50 border border-zinc-800 px-4 py-2 rounded-full flex items-center space-x-2">
+                  <motion.div
+                    animate={streakInfo.animate}
+                    transition={{ repeat: Infinity, duration: streakInfo.needsUpdate ? 1 : 3 }}
+                    className={`${streakInfo.colorClass} ${streakInfo.glowClass}`}
+                  >
+                    <Flame className="w-4 h-4 fill-current" />
+                  </motion.div>
+                  <span className="text-bold text-xs uppercase tracking-wider">
+                    {streakInfo.currentStreak || 0} Dias
+                  </span>
+                </div>
               </div>
               <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1 mr-2">
                 Nível {Math.floor((user.vorixScore || 0) / 1000) + 1}
@@ -1041,6 +1093,73 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 </div>
               </motion.div>
             </div>
+
+            {/* Streak Card */}
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-zinc-900/40 border border-zinc-800/50 p-4 lg:p-8 rounded-2xl lg:rounded-3xl space-y-4 lg:space-y-6"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <motion.div 
+                    animate={streakInfo.animate}
+                    transition={{ repeat: Infinity, duration: streakInfo.needsUpdate ? 1 : 3 }}
+                    className={`p-2 lg:p-3 bg-orange-600/10 rounded-xl border border-orange-600/20 ${streakInfo.glowClass}`}
+                  >
+                    <Flame className={`${streakInfo.colorClass} w-5 h-5 lg:w-6 lg:h-6 fill-current`} />
+                  </motion.div>
+                  <div>
+                    <h3 className="text-sm lg:text-xl font-bold">Sua Sequência</h3>
+                    <p className="text-zinc-500 text-[10px] lg:text-xs">
+                      {streakInfo.isUpdatedToday 
+                        ? "Você já manteve sua chama acesa hoje! 🔥" 
+                        : "Bora registrar seus gastos hoje? 👀"}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl lg:text-4xl font-black text-white">{streakInfo.currentStreak}</span>
+                  <span className="text-[10px] lg:text-xs font-bold text-zinc-500 uppercase ml-2">Dias</span>
+                </div>
+              </div>
+
+              {/* Progress to next milestone */}
+              {streakInfo.currentStreak < 7 ? (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-[10px] lg:text-xs font-bold uppercase tracking-widest text-zinc-500">
+                    <span>Progresso para 7 dias</span>
+                    <span>{Math.round((streakInfo.currentStreak / 7) * 100)}%</span>
+                  </div>
+                  <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(streakInfo.currentStreak / 7) * 100}%` }}
+                      className="h-full bg-[#ff4d00]"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 text-orange-500 text-xs font-bold p-3 bg-orange-600/10 border border-orange-600/20 rounded-xl">
+                  <Trophy className="w-4 h-4" />
+                  <span>Você é um Mestre Vorix! Continue batendo recordes.</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-4 border-t border-zinc-800/50">
+                <div className="text-center flex-1">
+                  <p className="text-[10px] text-zinc-500 uppercase font-bold">Recorde Atual</p>
+                  <p className="text-sm lg:text-lg font-bold">🏆 {streakInfo.longestStreak} Dias</p>
+                </div>
+                <div className="w-px h-8 bg-zinc-800 mx-4" />
+                <div className="text-center flex-1">
+                  <p className="text-[10px] text-zinc-500 uppercase font-bold">Status</p>
+                  <p className={`text-sm lg:text-lg font-bold ${streakInfo.needsUpdate ? 'text-rose-500' : 'text-emerald-500'}`}>
+                    {streakInfo.needsUpdate ? 'Urgente ⚠️' : streakInfo.isUpdatedToday ? 'Ativo ✅' : 'Pendente ⏳'}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">

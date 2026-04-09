@@ -51,16 +51,28 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
 
     try {
       // Simple mock coupon logic
-      if (coupon.toUpperCase() === 'VORIX30') {
+      const upperCoupon = coupon.toUpperCase();
+      if (upperCoupon === 'VORIX30' || upperCoupon === 'BRFINANCEIRO') {
         if (user.couponUsed) {
           setCouponError('Você já utilizou um cupom de desconto.');
         } else {
-          // Extend trial or give discount
-          // For now, let's just mark it as used
+          const isBrFinanceiro = upperCoupon === 'BRFINANCEIRO';
+          const pointsToAdd = isBrFinanceiro ? 100 : 0;
+          const daysToAdd = 30;
+
+          const currentTrialEnd = user.trialEndsAt?.toDate() || new Date();
+          // Se o trial já expirou, começamos de hoje. Se não, somamos ao atual.
+          const baseDate = currentTrialEnd > new Date() ? currentTrialEnd : new Date();
+          const newTrialEnd = new Date(baseDate.getTime() + (daysToAdd * 24 * 60 * 60 * 1000));
+          
           await updateDoc(doc(db, 'users', user.uid), {
-            couponUsed: coupon.toUpperCase()
+            couponUsed: upperCoupon,
+            trialEndsAt: newTrialEnd,
+            vorixScore: (user.vorixScore || 0) + pointsToAdd,
+            subscriptionStatus: 'trialing'
           });
-          setCouponSuccess('Cupom VORIX30 aplicado! Você ganhou mais 30 dias de uso.');
+
+          setCouponSuccess(`Cupom ${upperCoupon} aplicado! Você ganhou ${daysToAdd} dias e ${pointsToAdd} pontos.`);
         }
       } else {
         setCouponError('Cupom inválido ou expirado.');
@@ -270,7 +282,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
 
             <div className="pt-4 border-t border-zinc-800">
               <p className="text-[10px] text-zinc-600 font-medium text-center uppercase tracking-widest">
-                Dica: Use o cupom <span className="text-orange-500 font-black">VORIX30</span> para testar.
+                Dica: Use <span className="text-orange-500 font-black">VORIX30</span> ou <span className="text-orange-500 font-black">BRFINANCEIRO</span> para testar.
               </p>
             </div>
           </div>

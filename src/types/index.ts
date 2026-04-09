@@ -1,3 +1,10 @@
+export interface Streak {
+  currentStreak: number;
+  longestStreak: number;
+  lastActivityDate: string; // YYYY-MM-DD
+  streakUpdatedToday: boolean;
+}
+
 export interface User {
   uid: string;
   username: string;
@@ -19,6 +26,7 @@ export interface User {
   phone?: string;
   whatsappConnected?: boolean;
   whatsappNumber?: string;
+  streak?: Streak;
 }
 
 export interface Account {
