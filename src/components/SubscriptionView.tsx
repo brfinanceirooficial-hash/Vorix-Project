@@ -51,7 +51,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
 
     try {
       // Simple mock coupon logic
-      const upperCoupon = coupon.toUpperCase();
+      const upperCoupon = coupon.trim().toUpperCase();
       if (upperCoupon === 'VORIX30' || upperCoupon === 'BRFINANCEIRO') {
         if (user.couponUsed) {
           setCouponError('Você já utilizou um cupom de desconto.');
@@ -244,7 +244,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
                 type="text" 
                 placeholder="Digite seu cupom"
                 value={coupon}
-                onChange={(e) => setCoupon(e.target.value.toUpperCase())}
+                onChange={(e) => setCoupon(e.target.value.trim().toUpperCase())}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl px-5 py-4 text-sm font-bold text-white placeholder:text-zinc-700 focus:outline-none focus:border-orange-500 transition-all"
               />
               
