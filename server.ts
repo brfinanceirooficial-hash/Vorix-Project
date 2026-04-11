@@ -5,7 +5,18 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import apiApp from "./api/index.js";
 
+import fs from "fs";
+
 dotenv.config();
+
+const logFile = path.join(process.cwd(), "server.log");
+const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+
+function log(msg: string) {
+  const line = `${new Date().toISOString()} - ${msg}\n`;
+  console.log(line.trim());
+  logStream.write(line);
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,6 +24,11 @@ const __dirname = path.dirname(__filename);
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  app.use((req, res, next) => {
+    log(`${req.method} ${req.url}`);
+    next();
+  });
 
   app.use(apiApp);
 

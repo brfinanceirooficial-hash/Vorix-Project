@@ -1,6 +1,6 @@
 import express from "express";
 import PDFDocument from "pdfkit-table";
-import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { MercadoPagoConfig, PreApproval } from 'mercadopago';
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
