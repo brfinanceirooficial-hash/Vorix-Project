@@ -68,14 +68,19 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
 
     const userMessage = messageToSend.trim();
     
-    // Daily Limit Check (8 requests/day)
+    // Daily Limit Check based on Plan
     const today = new Date().toISOString().split('T')[0];
     const currentCount = user.lastAiRequestDate === today ? (user.aiRequestsCount || 0) : 0;
     
-    if (currentCount >= 8 && !user.isPaid) {
-      setError('Você atingiu o limite de 8 consultas diárias da IA Vorix. O limite reseta amanhã!');
-      setTimeout(() => setError(null), 5000);
-      return;
+    let maxQueries = 5; // Default for trial
+    if (user.plan === 'pro') maxQueries = 10;
+    
+    if (user.plan !== 'premium') {
+      if (currentCount >= maxQueries) {
+        setError(`Sua cota diária do plano ${user.plan || 'Trial'} (${maxQueries} consultas) foi atingida. Faça o upgrade para mais!`);
+        setTimeout(() => setError(null), 5000);
+        return;
+      }
     }
 
     setInput('');

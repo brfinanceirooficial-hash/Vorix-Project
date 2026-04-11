@@ -69,6 +69,12 @@ export const NotesView: React.FC<NotesViewProps> = ({ user }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (!editingNote && (user.plan === 'trial' || !user.plan) && notes.length >= 2) {
+        alert("O plano de Teste permite no máximo 2 anotações. Faça o upgrade para o Pro para anotações ilimitadas!");
+        setIsModalOpen(false);
+        return;
+      }
+
       if (editingNote) {
         await updateDoc(doc(db, `users/${user.uid}/notes`, editingNote.id), {
           ...formData,

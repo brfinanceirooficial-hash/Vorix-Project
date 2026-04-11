@@ -17,8 +17,11 @@ export interface User {
   createdAt: any;
   trialEndsAt?: any;
   subscriptionStatus?: 'trialing' | 'active' | 'expired';
+  plan?: 'trial' | 'pro' | 'premium';
   couponUsed?: string;
   trialReportUsed?: boolean;
+  reportsCount?: number;
+  lastReportDate?: string; // YYYY-MM-DD
   aiRequestsCount?: number;
   lastAiRequestDate?: string; // YYYY-MM-DD
   vorixRewardClaimed?: boolean;

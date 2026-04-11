@@ -576,6 +576,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     setIsSubmittingAccount(true);
     
     try {
+      // Account Limit Check
+      const maxAccounts = user.plan === 'premium' ? Infinity : (user.plan === 'pro' ? 3 : 1);
+      if (accounts.length >= maxAccounts) {
+        alert(`Seu plano ${user.plan || 'Trial'} permite no máximo ${maxAccounts} ${maxAccounts === 1 ? 'conta' : 'contas'}. Faça o upgrade para adicionar mais!`);
+        setIsSubmittingAccount(false);
+        return;
+      }
+
       await addDoc(collection(db, `users/${user.uid}/accounts`), {
         name: accountName,
         tipo: accountType,
@@ -617,6 +625,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     }
 
     setIsExporting(true);
+
+    // Report Limit Check
+    if (user.plan !== 'premium') {
+      if (user.plan === 'pro') {
+        // Pro: 1 report per week
+        if (user.lastReportDate) {
+          const lastReport = new Date(user.lastReportDate);
+          const oneWeekAgo = new Date();
+          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+          if (lastReport > oneWeekAgo) {
+            alert("O plano Pro permite 1 relatório por semana. Faça o upgrade para o Premium!");
+            setIsExporting(false);
+            return;
+          }
+        }
+      } else {
+        // Trial/Free: 2 reports total
+        if ((user.reportsCount || 0) >= 2) {
+          alert("Você atingiu o limite de 2 relatórios totais do plano de Teste. Faça o upgrade!");
+          setIsExporting(false);
+          return;
+        }
+      }
+    }
 
     try {
       // Filter transactions by date range in local time to avoid timezone offset issues
@@ -662,6 +694,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       };
 
       const response = generatePDFReport(payload);
+      
+      // Update report tracking
+      const today = new Date().toISOString().split('T')[0];
+      await updateDoc(doc(db, 'users', user.uid), {
+        reportsCount: (user.reportsCount || 0) + 1,
+        lastReportDate: today
+      });
+
       setShowExportModal(false);
     } catch (error: any) {
       console.error('Export error:', error);

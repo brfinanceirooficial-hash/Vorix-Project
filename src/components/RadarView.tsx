@@ -297,7 +297,16 @@ export const RadarView: React.FC<RadarViewProps> = ({ user }) => {
               </div>
               <div className="space-y-0.5 lg:space-y-1">
                 <p className="text-zinc-500 text-[8px] lg:text-xs font-bold uppercase tracking-widest truncate">{marketData.usd?.name || 'Dólar'}</p>
-                <p className="text-lg lg:text-3xl font-bold tracking-tighter">R$ {parseFloat(marketData.usd?.bid || '0').toFixed(2)}</p>
+                <div className="relative">
+                  <p className={`text-lg lg:text-3xl font-bold tracking-tighter ${(user.plan === 'trial' || !user.plan) ? 'blur-md select-none' : ''}`}>
+                    R$ {parseFloat(marketData.usd?.bid || '0').toFixed(2)}
+                  </p>
+                  {(user.plan === 'trial' || !user.plan) && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Zap className="w-5 h-5 text-orange-500 opacity-50" />
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
 
@@ -319,7 +328,16 @@ export const RadarView: React.FC<RadarViewProps> = ({ user }) => {
               </div>
               <div className="space-y-0.5 lg:space-y-1">
                 <p className="text-zinc-500 text-[8px] lg:text-xs font-bold uppercase tracking-widest truncate">{marketData.btc?.name || 'Bitcoin'}</p>
-                <p className="text-lg lg:text-3xl font-bold tracking-tighter">R$ {parseFloat(marketData.btc?.bid || '0').toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+                <div className="relative">
+                  <p className={`text-lg lg:text-3xl font-bold tracking-tighter ${(user.plan === 'trial' || !user.plan) ? 'blur-md select-none' : ''}`}>
+                    R$ {parseFloat(marketData.btc?.bid || '0').toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                  </p>
+                  {(user.plan === 'trial' || !user.plan) && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Zap className="w-5 h-5 text-orange-500 opacity-50" />
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
 
@@ -341,7 +359,16 @@ export const RadarView: React.FC<RadarViewProps> = ({ user }) => {
               </div>
               <div className="space-y-0.5 lg:space-y-1">
                 <p className="text-zinc-500 text-[8px] lg:text-xs font-bold uppercase tracking-widest truncate">{marketData.ibov?.name || 'Ibovespa'}</p>
-                <p className="text-lg lg:text-3xl font-bold tracking-tighter">{marketData.ibov?.bid || '0'} pts</p>
+                <div className="relative">
+                  <p className={`text-lg lg:text-3xl font-bold tracking-tighter ${(user.plan === 'trial' || !user.plan) ? 'blur-md select-none' : ''}`}>
+                    {marketData.ibov?.bid || '0'} pts
+                  </p>
+                  {(user.plan === 'trial' || !user.plan) && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Zap className="w-5 h-5 text-purple-500 opacity-50" />
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
 
@@ -363,7 +390,16 @@ export const RadarView: React.FC<RadarViewProps> = ({ user }) => {
               </div>
               <div className="space-y-0.5 lg:space-y-1">
                 <p className="text-zinc-500 text-[8px] lg:text-xs font-bold uppercase tracking-widest truncate">{marketData.stock?.symbol || 'PETR4'}</p>
-                <p className="text-lg lg:text-3xl font-bold tracking-tighter">R$ {marketData.stock?.bid || '0.00'}</p>
+                <div className="relative">
+                  <p className={`text-lg lg:text-3xl font-bold tracking-tighter ${(user.plan === 'trial' || !user.plan) ? 'blur-md select-none' : ''}`}>
+                    R$ {marketData.stock?.bid || '0.00'}
+                  </p>
+                  {(user.plan === 'trial' || !user.plan) && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Zap className="w-5 h-5 text-emerald-500 opacity-50" />
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           </>
@@ -409,9 +445,19 @@ export const RadarView: React.FC<RadarViewProps> = ({ user }) => {
                     Risco {tip.risk === 'low' ? 'Baixo' : tip.risk === 'medium' ? 'Médio' : 'Alto'}
                   </span>
                 </div>
-                <div className="space-y-1 lg:space-y-2">
-                  <h4 className="text-base lg:text-xl font-bold group-hover:text-orange-500 transition-colors">{tip.title}</h4>
-                  <p className="text-zinc-500 text-xs lg:text-base leading-relaxed">{tip.description}</p>
+                <div className="space-y-1 lg:space-y-2 relative">
+                  <h4 className={`text-base lg:text-xl font-bold group-hover:text-orange-500 transition-colors ${(user.plan === 'trial' || !user.plan) ? 'blur-[4px] select-none' : ''}`}>
+                    {tip.title}
+                  </h4>
+                  <p className={`text-zinc-500 text-xs lg:text-base leading-relaxed ${(user.plan === 'trial' || !user.plan) ? 'blur-md select-none' : ''}`}>
+                    {tip.description}
+                  </p>
+                  {(user.plan === 'trial' || !user.plan) && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-xl">
+                      <Star className="w-6 h-6 text-orange-500 mb-1" />
+                      <span className="text-[10px] font-black text-white uppercase tracking-widest">Upgrade para ver</span>
+                    </div>
+                  )}
                 </div>
                 <div className="pt-2 lg:pt-4 flex items-center justify-between">
                   <a 
