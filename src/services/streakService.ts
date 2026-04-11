@@ -86,26 +86,28 @@ export const updateStreakOnActivity = async (userId: string, currentStreakData?:
  * Verifica inatividade e gera alertas
  */
 export const checkUserInactivity = async (user: User) => {
-  if (!user.streak || !user.streak.lastActivityDate) return;
+  if (!user.uid || !user.streak || !user.streak.lastActivityDate) return;
 
   const today = getLocalDateString();
   const lastActivity = user.streak.lastActivityDate;
+  
+  // Se a última atividade foi hoje, o streak está em dia.
+  if (lastActivity === today) return;
+
   const daysDiff = getDaysDifference(lastActivity, today);
 
-  // Se já registrou hoje, não faz nada
-  if (daysDiff === 0) return;
-
-  // Se o usuário entrar no app e o streak for de ontem, mas ainda não registrou hoje
-  // Não resetamos ainda, pois ele tem até o fim do dia.
-  // Só resetamos se daysDiff > 1.
-
+  // RESET DE STREAK: Se passou mais de 1 dia sem atividade
   if (daysDiff > 1 && user.streak.currentStreak > 0) {
     // Perdeu o streak
-    const message = "A sequência caiu 😢 Mas recomeçar hoje já te coloca de volta no jogo.";
+    const message = "Sua sequência de dias foi interrompida 😢 Mas não desanime! Recomeçar hoje é o primeiro passo para o sucesso.";
+    
+    // Verificar se já notificamos sobre a perda hoje para evitar flood
+    // Como vamos resetar o streak abaixo, o user.streak.currentStreak virará 0, 
+    // o que impedirá este bloco de rodar novamente até que ele ganhe um novo streak e perca de novo.
     
     await addDoc(collection(db, `users/${user.uid}/alerts`), {
       type: 'warning',
-      title: 'Streak perdido',
+      title: 'Sequência Interrompida',
       message,
       severity: 'medium',
       read: false,
@@ -124,36 +126,39 @@ export const checkUserInactivity = async (user: User) => {
     return;
   }
 
-  // Alertas preventivos baseados no tempo (Psicológicos)
-  let alert = null;
-  const currentHour = new Date().getHours();
-
+  // ALERTAS PREVENTIVOS: Se a última atividade foi ontem (daysDiff === 1) e ainda não registrou hoje
   if (daysDiff === 1) {
+    const currentHour = new Date().getHours();
+    let alertData = null;
+
     if (currentHour >= 18) {
-      alert = {
-        title: 'Última chance!',
-        message: 'Últimas horas pra manter sua sequência 🔥 Bora registrar algo?',
+      alertData = {
+        title: 'Última chance do dia! 🔥',
+        message: 'O dia está acabando! Registre sua movimentação agora para não perder sua sequência.',
         severity: 'high' as const
       };
-    } else {
-      alert = {
-        title: 'Mantenha o ritmo',
-        message: 'Seu streak ainda tá vivo 🔥 Bora manter hoje?',
+    } else if (currentHour >= 12) {
+      alertData = {
+        title: 'Mantenha o ritmo! 📈',
+        message: 'Não esqueça de registrar seu dia para manter sua sequência Vorix ativa.',
         severity: 'low' as const
       };
     }
-  }
 
-  if (alert) {
-    // Evitar duplicar alertas do mesmo dia
-    const alertsRef = collection(db, `users/${user.uid}/alerts`);
-    // Aqui poderíamos checar se já existe um alerta hoje, mas vamos confiar na lógica de "uma vez por sessão"
-    await addDoc(alertsRef, {
-      type: 'info',
-      ...alert,
-      read: false,
-      createdAt: Timestamp.now()
-    });
+    if (alertData) {
+      // Evitar duplicar alertas do mesmo tipo e título hoje
+      // Para ser performático e evitar loops, vamos usar o localStorage ou uma verificação simples
+      const lastNotifyDate = localStorage.getItem(`vorix_notify_streak_${user.uid}`);
+      if (lastNotifyDate !== today) {
+        await addDoc(collection(db, `users/${user.uid}/alerts`), {
+          type: 'info',
+          ...alertData,
+          read: false,
+          createdAt: Timestamp.now()
+        });
+        localStorage.setItem(`vorix_notify_streak_${user.uid}`, today);
+      }
+    }
   }
 };
 

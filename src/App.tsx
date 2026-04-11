@@ -5,7 +5,7 @@ import { Dashboard } from './components/Dashboard';
 import { User } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dessert, Loader2 } from 'lucide-react';
-import { checkUserInactivity } from './services/streakService';
+import { checkUserInactivity, updateStreakOnActivity } from './services/streakService';
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,6 +38,7 @@ export default function App() {
         }
 
         // Listen for real-time updates to the user document
+        let hasCheckedStreak = false;
         unsubscribeUser = onSnapshot(userDocRef, async (docSnap) => {
           if (docSnap.exists()) {
             const userData = docSnap.data() as User;
@@ -65,8 +66,12 @@ export default function App() {
 
             setUser(userData);
             
-            // Verificação de inatividade do streak
-            if (userData.uid) {
+            // Verificação de streak: Apenas uma vez por sessão de componente
+            if (userData.uid && !hasCheckedStreak) {
+              hasCheckedStreak = true;
+              // 1. Atualiza o streak por "check-in" (abrir o app)
+              updateStreakOnActivity(userData.uid, userData.streak);
+              // 2. Verifica se houve inatividade longa para resetar ou alertar
               checkUserInactivity(userData);
             }
           }
