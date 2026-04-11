@@ -15,7 +15,9 @@ import {
   ShieldCheck,
   Star,
   Trophy,
-  Target
+  Target,
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 
@@ -129,6 +131,37 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
       handleStorageError(error, OperationType.UPDATE, `users/${user.uid}`);
     } finally {
       setIsApplying(false);
+    }
+  };
+
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+
+  const handlePayment = async () => {
+    setIsGeneratingLink(true);
+    try {
+      const response = await fetch('/api/create-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          planId: selectedPlan,
+          userId: user.uid,
+          userEmail: user.email,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.init_point) {
+        window.location.href = data.init_point;
+      } else {
+        alert("Erro ao gerar link de pagamento. Tente novamente.");
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      alert("Falha na conexão com o sistema de pagamentos.");
+    } finally {
+      setIsGeneratingLink(false);
     }
   };
 
@@ -320,6 +353,24 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
                     Pague <strong>R$ {plans[selectedPlan].price}</strong> para ativar seu acesso {selectedPlan}. A ativação é feita em até 5 minutos após o processamento.
                   </p>
                 </div>
+
+                <button 
+                  onClick={handlePayment}
+                  disabled={isGeneratingLink}
+                  className="w-full py-4 rounded-2xl font-black text-sm lg:text-base uppercase tracking-[0.2em] transition-all bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-600/20 hover:shadow-orange-600/40 hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
+                >
+                  {isGeneratingLink ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Gerando Link...
+                    </>
+                  ) : (
+                    <>
+                      Assinar Plano Agora
+                      <ChevronRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -366,20 +417,3 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
     </div>
   );
 };
-
-const Loader2 = ({ className }: { className?: string }) => (
-  <svg 
-    className={className} 
-    xmlns="http://www.w3.org/2000/svg" 
-    width="24" 
-    height="24" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round"
-  >
-    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-  </svg>
-);

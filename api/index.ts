@@ -1,9 +1,14 @@
 import express from "express";
 import PDFDocument from "pdfkit-table";
+import { MercadoPagoConfig, Preference } from 'mercadopago';
 
 const app = express();
-
 app.use(express.json({ limit: "10mb" }));
+
+// Configure Mercado Pago
+const client = new MercadoPagoConfig({ 
+  accessToken: process.env.MP_ACCESS_TOKEN || '' 
+});
 
 // API routes
 app.get("/api/health", (req, res) => {
@@ -190,11 +195,55 @@ app.post("/api/export-pdf", async (req, res) => {
   }
 });
 
+// Create Mercado Pago Recurring Subscription (Assinatura Recorrente)
+app.post("/api/create-subscription", async (req, res) => {
+  try {
+    const { planId, userId, userEmail } = req.body;
+
+    const planData: Record<string, { title: string, price: number }> = {
+      pro: { title: "Vorix Finance - Plano Pro", price: 10.99 },
+      premium: { title: "Vorix Finance - Plano Premium", price: 17.99 }
+    };
+
+    const selectedPlan = planData[planId];
+    if (!selectedPlan) {
+      return res.status(400).json({ error: "Plano inválido" });
+    }
+
+    const preApproval = new PreApproval(client);
+    
+    // Gerar Assinatura Recorrente Real
+    const result = await preApproval.create({
+      body: {
+        reason: selectedPlan.title,
+        auto_recurring: {
+          frequency: 1,
+          frequency_type: 'months',
+          transaction_amount: selectedPlan.price,
+          currency_id: 'BRL',
+        },
+        back_url: `${req.headers.origin}/?status=success`,
+        payer_email: userEmail,
+        external_reference: userId, // Usado para identificar o usuário no webhook
+        status: 'pending'
+      }
+    });
+
+    res.json({ init_point: result.init_point });
+  } catch (error: any) {
+    console.error("Subscription creation error:", error);
+    res.status(500).json({ error: error.message || "Failed to create subscription" });
+  }
+});
+
 // Mercado Pago Webhook
 app.post("/api/mercadopago/webhook", (req, res) => {
   const { body, query } = req;
   console.log("Mercado Pago Webhook received:", { body, query });
-  // In a real app, we would verify the payment and update the user's isPaid status in Firestore
+
+  // Here you would check for body.action === "payment.created" 
+  // and then fetch the payment details from MP API to confirm status before updating user.plan in DB.
+
   res.status(200).send("OK");
 });
 
