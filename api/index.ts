@@ -199,6 +199,7 @@ app.post("/api/export-pdf", async (req, res) => {
 app.post("/api/create-subscription", async (req, res) => {
   try {
     const { planId, userId, userEmail } = req.body;
+    console.log("Creating subscription for:", { planId, userId, userEmail });
 
     const planData: Record<string, { title: string, price: number }> = {
       pro: { title: "Vorix Finance - Plano Pro", price: 10.99 },
@@ -207,6 +208,7 @@ app.post("/api/create-subscription", async (req, res) => {
 
     const selectedPlan = planData[planId];
     if (!selectedPlan) {
+      console.warn("Invalid planId received:", planId);
       return res.status(400).json({ error: "Plano inválido" });
     }
 
@@ -223,15 +225,20 @@ app.post("/api/create-subscription", async (req, res) => {
           currency_id: 'BRL',
         },
         back_url: `${req.headers.origin}/?status=success`,
-        payer_email: userEmail,
-        external_reference: userId, // Usado para identificar o usuário no webhook
+        payer_email: userEmail || 'test@test.com', // Fallback for testing if email is missing
+        external_reference: userId,
         status: 'pending'
       }
     });
 
+    console.log("Subscription created successfully:", result.id);
     res.json({ init_point: result.init_point });
   } catch (error: any) {
-    console.error("Subscription creation error:", error);
+    console.error("Subscription creation error details:", error);
+    // Log Mercado Pago specific error details if available
+    if (error.cause) {
+      console.error("MP Error Details:", JSON.stringify(error.cause, null, 2));
+    }
     res.status(500).json({ error: error.message || "Failed to create subscription" });
   }
 });
