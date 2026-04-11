@@ -280,11 +280,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
               </AnimatePresence>
             </div>
 
-            <div className="pt-4 border-t border-zinc-800">
-              <p className="text-[10px] text-zinc-600 font-medium text-center uppercase tracking-widest">
-                Dica: Use <span className="text-orange-500 font-black">VORIX30</span> ou <span className="text-orange-500 font-black">BRFINANCEIRO</span> para testar.
-              </p>
-            </div>
+
           </div>
 
           {/* Benefits Card */}
