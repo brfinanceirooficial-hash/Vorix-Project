@@ -894,7 +894,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       </motion.aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto px-3 py-3 lg:p-12 space-y-5 lg:space-y-8 custom-scrollbar relative">
+      <main className={`flex-1 overflow-y-auto px-3 py-3 lg:p-12 space-y-5 lg:space-y-8 custom-scrollbar relative ${view === 'ia' ? 'flex flex-col pb-0' : ''}`}>
         {/* Header */}
         <header className="flex flex-col space-y-2.5 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between">
           {/* Top Row for Mobile: Level and PONTOS */}
@@ -1071,7 +1071,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
         {/* Floating Action Button for Mobile */}
         <AnimatePresence>
-          {isMobile && (
+          {isMobile && view !== 'ia' && (
             <motion.button
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -2293,6 +2293,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {view === 'ia' && (
+          <div className="w-full h-full flex flex-col flex-1 pb-20 lg:pb-0">
+            <VorixIA user={user} transactions={transactions} accounts={accounts} fullView={true} />
           </div>
         )}
       </main>

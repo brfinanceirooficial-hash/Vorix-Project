@@ -90,7 +90,7 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
 
     try {
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
-      const model = ai.models.get({ model: 'gemini-2.0-flash' });
+      const model = ai.models.get({ model: 'gemini-1.5-flash' });
 
       // ... existing data preparation ...
       const totalBalance: number = accounts.reduce((acc: number, curr: Account) => acc + curr.balance, 0);
@@ -152,10 +152,10 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
       `;
 
       const chat = ai.chats.create({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-1.5-flash',
         config: {
           systemInstruction: context,
-          maxOutputTokens: isEconomyMode ? 300 : 1000, // Direct token saving
+          maxOutputTokens: isEconomyMode ? 300 : 1000, 
         },
       });
 
@@ -197,7 +197,7 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
 
   if (fullView) {
     return (
-      <div className="flex flex-col h-[calc(100vh-180px)] lg:h-[calc(100vh-200px)] bg-zinc-900/40 border border-zinc-800/50 rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl">
+      <div className="flex flex-col flex-1 min-h-0 bg-zinc-900/40 border border-zinc-800/50 rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl relative">
         {/* Header */}
         <div className="p-3.5 lg:p-6 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between">
           <div className="flex items-center space-x-2.5 lg:space-x-4">
