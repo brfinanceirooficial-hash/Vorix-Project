@@ -1480,12 +1480,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         )}
 
         {view === 'ia' && (
-          <div className="space-y-8">
-            <div className="space-y-1">
-              <h2 className="text-4xl font-bold tracking-tight">IA Vorix</h2>
-              <p className="text-zinc-500 text-lg">Sua inteligência artificial para análise e evolução financeira.</p>
+          <div className="flex flex-col flex-1 h-[calc(100vh-120px)] lg:h-[calc(100vh-40px)] pb-20 lg:pb-0">
+            <div className="space-y-1 mb-4 lg:mb-6">
+              <h2 className="text-2xl lg:text-4xl font-bold tracking-tight">IA Vorix</h2>
+              <p className="text-zinc-500 text-sm lg:text-lg">Sua inteligência artificial para análise e evolução financeira.</p>
             </div>
-            <VorixIA user={user} transactions={transactions} accounts={accounts} fullView />
+            <VorixIA user={user} transactions={transactions} accounts={accounts} fullView={true} />
           </div>
         )}
 
@@ -2296,11 +2296,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           </div>
         )}
 
-        {view === 'ia' && (
-          <div className="w-full h-full flex flex-col flex-1 pb-20 lg:pb-0">
-            <VorixIA user={user} transactions={transactions} accounts={accounts} fullView={true} />
-          </div>
-        )}
+
       </main>
 
       {/* Vorix IA Chat (Floating Bubble) - REMOVED */}
