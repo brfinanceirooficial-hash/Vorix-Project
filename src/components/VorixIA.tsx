@@ -72,8 +72,8 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
     const today = new Date().toISOString().split('T')[0];
     const currentCount = user.lastAiRequestDate === today ? (user.aiRequestsCount || 0) : 0;
     
-    let maxQueries = 5; // Default for trial
-    if (user.plan === 'pro') maxQueries = 10;
+    let maxQueries = 2; // Plano Trial (Free)
+    if (user.plan === 'pro') maxQueries = 6;
     
     if (user.plan !== 'premium') {
       if (currentCount >= maxQueries) {
@@ -90,7 +90,7 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
 
     try {
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
-      const model = ai.models.get({ model: 'gemini-3-flash-preview' });
+      const model = ai.models.get({ model: 'gemini-2.0-flash' });
 
       // ... existing data preparation ...
       const totalBalance: number = accounts.reduce((acc: number, curr: Account) => acc + curr.balance, 0);
@@ -122,24 +122,37 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
         .join('\n');
 
       const context = `
-        Você é a IA Vorix. Sua missão é transformar a vida financeira do usuário.
-        ${isEconomyMode ? 'Responda de forma extremamente concisa e direta para economizar tokens.' : 'Forneça análises profundas e detalhadas.'}
+        Você é a IA Vorix, Consultora Financeira Sênior e Estrategista de Patrimônio. 
+        Sua missão é ajudar o usuário (${user.username}) a melhorar sua saúde financeira, identificar gastos desnecessários, sugerir somas e investimentos para o futuro.
 
-        DADOS (${user.username}):
-        - Saldo: ${formatCurrency(totalBalance)}
-        - Entradas/Saídas: ${formatCurrency(monthlyIncome)} / ${formatCurrency(monthlyExpenses)}
-        - PONTOS: ${user.vorixScore}
-        - Categorias: ${sortedCategories}
-        - Transações: ${transactionContext}
+        ${isEconomyMode ? 'Responda de forma extremamente concisa e direta, focada em números e ações.' : 'Forneça análises detalhadas, explicando o "porquê" de cada sugestão.'}
 
-        DIRETRIZES:
-        1. Identifique economia em ${topCategory}.
-        2. Projete saldo final: ${formatCurrency(projectedBalance)}.
-        3. Use Markdown e emojis.
+        ESTADO ATUAL DO USUÁRIO:
+        - Patrimônio Total: ${formatCurrency(totalBalance)}
+        - Receitas do Mês: ${formatCurrency(monthlyIncome)}
+        - Despesas do Mês: ${formatCurrency(monthlyExpenses)}
+        - Saldo Projetado (Final do Mês): ${formatCurrency(projectedBalance)}
+        - Pontuação Vorix: ${user.vorixScore} (Quanto maior, mais disciplinado)
+        
+        DISTRIBUIÇÃO DE GASTOS:
+        ${sortedCategories}
+        
+        PRINCIPAL FOCO DE ATENÇÃO:
+        - Maior Categoria de Gasto: ${topCategory} (${formatCurrency(topCategoryTotal)})
+        - Potencial de Economia Imediata (15%): ${formatCurrency(potentialSavings)}
+
+        HISTÓRICO RECENTE:
+        ${transactionContext}
+
+        SUAS DIRETRIZES DE RESPOSTA:
+        1. Seja proativa: Não apenas responda, mas sugira onde o usuário está errando ou onde pode melhorar.
+        2. Seja encorajadora mas firme: Se os gastos estiverem altos, alerte sobre o impacto no saldo projetado.
+        3. Fale sobre investimentos: Sempre que sobrar saldo, sugira diversificação (CDB, FIIs, Tesouro).
+        4. Use Markdown (negrito para valores) e emojis financeiros.
       `;
 
       const chat = ai.chats.create({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.0-flash',
         config: {
           systemInstruction: context,
           maxOutputTokens: isEconomyMode ? 300 : 1000, // Direct token saving

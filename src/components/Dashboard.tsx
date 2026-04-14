@@ -834,6 +834,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             { id: 'missions', label: 'Missões', icon: Trophy },
             { id: 'goals', label: 'Metas', icon: Target },
             { id: 'notes', label: 'Anotações', icon: StickyNote },
+            { id: 'ia', label: 'IA Vorix', icon: MessageCircle },
             { id: 'subscription', label: 'Assinatura', icon: Star },
             { id: 'reports', label: 'Relatórios', icon: Download },
             { id: 'settings', label: 'Configurações', icon: Settings },

@@ -550,8 +550,7 @@ app.get('/api/radar-data', async (_req, res) => {
       }
     };
 
-    const [ibovRaw, petrRaw] = await Promise.all([
-      fetchYahoo('^BVSP'),
+    const [petrRaw] = await Promise.all([
       fetchYahoo('PETR4.SA'),
     ]);
 
@@ -560,20 +559,14 @@ app.get('/api/radar-data', async (_req, res) => {
 
     const payload = {
       usd: {
-        bid:       Number(awesomeData.USDBRL?.bid  || 0).toFixed(2),
+        bid:       Number(awesomeData.USDBRL?.high || awesomeData.USDBRL?.bid || 0).toFixed(2),
         pctChange: Number(awesomeData.USDBRL?.pctChange || 0).toFixed(2),
         name: 'Dólar Comercial',
       },
       btc: {
-        bid:       Number(awesomeData.BTCBRL?.bid  || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 }),
+        bid:       Number(awesomeData.BTCBRL?.high || awesomeData.BTCBRL?.bid || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 }),
         pctChange: Number(awesomeData.BTCBRL?.pctChange || 0).toFixed(2),
         name: 'Bitcoin',
-      },
-      ibov: {
-        bid:       ibovRaw ? ibovRaw.price.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '—',
-        pctChange: ibovRaw ? pct(ibovRaw.price, ibovRaw.prev) : '0.00',
-        name: 'Ibovespa',
-        symbol: 'IBOV',
       },
       stock: {
         bid:       petrRaw ? petrRaw.price.toFixed(2) : '—',

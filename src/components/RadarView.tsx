@@ -28,7 +28,6 @@ import { User } from '../types';
 interface MarketData {
   usd:   { bid: string; pctChange: string; name: string };
   btc:   { bid: string; pctChange: string; name: string };
-  ibov:  { bid: string; pctChange: string; name: string; symbol: string };
   stock: { bid: string; pctChange: string; name: string; symbol: string };
   updatedAt?: string;
 }
@@ -74,7 +73,7 @@ export const RadarView: React.FC<RadarViewProps> = ({ user }) => {
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
 
-      setMarketData({ usd: data.usd, btc: data.btc, ibov: data.ibov, stock: data.stock, updatedAt: data.updatedAt });
+      setMarketData({ usd: data.usd, btc: data.btc, stock: data.stock, updatedAt: data.updatedAt });
       const ts = data.updatedAt ? new Date(data.updatedAt) : new Date();
       setLastUpdated(ts);
       localStorage.setItem('vorix_radar_market', JSON.stringify({ ...data, savedAt: Date.now() }));
@@ -83,7 +82,7 @@ export const RadarView: React.FC<RadarViewProps> = ({ user }) => {
       if (cached) {
         try {
           const c = JSON.parse(cached);
-          setMarketData({ usd: c.usd, btc: c.btc, ibov: c.ibov, stock: c.stock });
+          setMarketData({ usd: c.usd, btc: c.btc, stock: c.stock });
           if (c.updatedAt) setLastUpdated(new Date(c.updatedAt));
         } catch {}
       } else {
@@ -178,7 +177,7 @@ Retorne JSON válido apenas, sem markdown, sem explicação:
       try {
         const c = JSON.parse(cachedMarket);
         if (Date.now() - (c.savedAt || 0) < 3_600_000) {
-          setMarketData({ usd: c.usd, btc: c.btc, ibov: c.ibov, stock: c.stock });
+          setMarketData({ usd: c.usd, btc: c.btc, stock: c.stock });
           if (c.updatedAt) setLastUpdated(new Date(c.updatedAt));
           setLoadingData(false);
         }
@@ -373,9 +372,9 @@ Retorne JSON válido apenas, sem markdown, sem explicação:
           )}
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:gap-5">
           {loadingData ? (
-            Array(4).fill(0).map((_, i) => (
+            Array(3).fill(0).map((_, i) => (
               <div key={i} className="h-32 lg:h-40 bg-zinc-900/50 border border-zinc-800 rounded-2xl lg:rounded-3xl animate-pulse" />
             ))
           ) : dataError && !marketData ? (
@@ -393,16 +392,10 @@ Retorne JSON válido apenas, sem markdown, sem explicação:
               <MarketCard icon={Coins} iconColor="text-orange-400" bgColor="bg-orange-500/10"
                 name={marketData.btc.name} bid={marketData.btc.bid} pctChange={marketData.btc.pctChange} delay={0.05} locked={false} />
 
-              {/* IBOV — apenas Pro/Premium */}
-              <MarketCard icon={BarChart3} iconColor="text-purple-400" bgColor="bg-purple-500/10"
-                name={marketData.ibov.name} symbol={marketData.ibov.symbol}
-                bid={marketData.ibov.bid} pctChange={marketData.ibov.pctChange}
-                prefix="" suffix=" pts" delay={0.1} locked={!paidUser} />
-
               {/* PETR4 — apenas Pro/Premium */}
               <MarketCard icon={TrendingUp} iconColor="text-emerald-400" bgColor="bg-emerald-500/10"
                 name={marketData.stock.name} symbol={marketData.stock.symbol}
-                bid={marketData.stock.bid} pctChange={marketData.stock.pctChange} delay={0.15} locked={!paidUser} />
+                bid={marketData.stock.bid} pctChange={marketData.stock.pctChange} delay={0.1} locked={!paidUser} />
             </>
           ) : null}
         </div>
