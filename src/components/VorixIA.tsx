@@ -72,15 +72,19 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
     const today = new Date().toISOString().split('T')[0];
     const currentCount = user.lastAiRequestDate === today ? (user.aiRequestsCount || 0) : 0;
     
-    let maxQueries = 2; // Plano Trial (Free)
-    if (user.plan === 'pro') maxQueries = 6;
+    let maxQueries = 3; // Plano Trial (Free)
+    if (user.plan === 'pro') maxQueries = 15;
+    if (user.plan === 'premium') maxQueries = 45;
     
-    if (user.plan !== 'premium') {
-      if (currentCount >= maxQueries) {
-        setError(`Sua cota diária do plano ${user.plan || 'Trial'} (${maxQueries} consultas) foi atingida. Faça o upgrade para mais!`);
-        setTimeout(() => setError(null), 5000);
-        return;
+    if (currentCount >= maxQueries) {
+      if (user.plan === 'premium') {
+        setError(`Limite de segurança atingido (${maxQueries} consultas/dia) para preservar a estabilidade da IA.`);
+      } else {
+        const planName = user.plan === 'pro' ? 'Pro' : 'Grátis';
+        setError(`Sua cota diária do plano ${planName} (${maxQueries} consultas) foi atingida. Faça o upgrade para mais!`);
       }
+      setTimeout(() => setError(null), 5000);
+      return;
     }
 
     setInput('');
@@ -159,7 +163,7 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
         },
       });
 
-      const response = await chat.sendMessage({ message: userMessage });
+      const response = await chat.sendMessage(userMessage);
       
       // Update request count in Firestore
       try {
