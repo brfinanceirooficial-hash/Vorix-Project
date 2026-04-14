@@ -41,6 +41,9 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Sessão de chat persistente — mantém o histórico entre mensagens
+  const chatRef = useRef<any>(null);
+  const aiRef = useRef<any>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -95,7 +98,6 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
       if (!apiKey) throw new Error('VITE_GEMINI_API_KEY não configurada');
-      const ai = new GoogleGenAI({ apiKey });
 
       // ... existing data preparation ...
       const totalBalance: number = accounts.reduce((acc: number, curr: Account) => acc + curr.balance, 0);
@@ -156,15 +158,32 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
         4. Use Markdown (negrito para valores) e emojis financeiros.
       `;
 
-      const chat = ai.chats.create({
-        model: 'gemini-3-flash-preview',
-        config: {
-          systemInstruction: context,
-          maxOutputTokens: isEconomyMode ? 300 : 1000,
-        },
-      });
+      // ── Constrói (ou reutiliza) a sessão de chat ──────────────
+      // Se já existe uma sessão ativa, reutiliza para manter o histórico
+      if (!aiRef.current) {
+        aiRef.current = new GoogleGenAI({ apiKey });
+      }
 
-      const response = await chat.sendMessage({ message: userMessage });
+      if (!chatRef.current) {
+        // Monta o histórico existente no formato da SDK do Gemini
+        const history = messages
+          .filter(m => m.text) // ignora vazios
+          .map(m => ({
+            role: m.role === 'user' ? 'user' : 'model' as const,
+            parts: [{ text: m.text }],
+          }));
+
+        chatRef.current = aiRef.current.chats.create({
+          model: 'gemini-3-flash-preview',
+          config: {
+            systemInstruction: context,
+            maxOutputTokens: isEconomyMode ? 800 : 2000,
+          },
+          history: history.length > 1 ? history.slice(0, -0) : [],
+        });
+      }
+
+      const response = await chatRef.current.sendMessage({ message: userMessage });
       
       // Update request count in Firestore
       try {
