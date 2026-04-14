@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Zap, 
-  RefreshCw, 
-  AlertCircle, 
-  Coins, 
-  DollarSign, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Zap,
+  RefreshCw,
+  AlertCircle,
+  Coins,
+  DollarSign,
   BarChart3,
   Sparkles,
   Loader2,
   ExternalLink,
-  Info
+  Info,
+  Star,
+  Newspaper,
+  TrendingUp as TrendingUpIcon,
 } from 'lucide-react';
 import { GoogleGenAI, Type } from '@google/genai';
-import { formatCurrency } from '../lib/utils';
 import { updateMissionProgress } from '../services/gamificationService';
 import { User } from '../types';
 
@@ -24,6 +26,7 @@ interface MarketData {
   btc: { bid: string; pctChange: string; name: string };
   ibov: { bid: string; pctChange: string; name: string; symbol: string };
   stock: { bid: string; pctChange: string; name: string; symbol: string };
+  updatedAt?: string;
 }
 
 interface InvestmentTip {
@@ -33,241 +36,239 @@ interface InvestmentTip {
   category: string;
 }
 
+interface NewsItem {
+  headline: string;
+  summary: string;
+  tag: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
+}
+
 interface RadarViewProps {
   user: User;
 }
 
+const isPlanFree = (user: User) => !user.plan || user.plan === 'trial';
+
 export const RadarView: React.FC<RadarViewProps> = ({ user }) => {
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [tips, setTips] = useState<InvestmentTip[]>([]);
+  const [news, setNews] = useState<NewsItem[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isLoadingTips, setIsLoadingTips] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
+  const [isLoadingNews, setIsLoadingNews] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchMarketData = async () => {
-    // Only show loading if we don't have cached data
-    if (!localStorage.getItem('vorix_radar_market_data')) {
-      setIsLoadingData(true);
-    }
-    setError(null);
+    setIsLoadingData(true);
+    setDataError(null);
     try {
-      // 1. Fetching USD and BTC from AwesomeAPI with cache busting
-      const timestamp = Date.now();
-      const awesomeResponse = await fetch(`https://economia.awesomeapi.com.br/json/last/USD-BRL,BTC-BRL?t=${timestamp}`);
-      const awesomeData = await awesomeResponse.json();
+      const res = await fetch('/api/radar-data');
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Erro ao buscar dados');
 
-      // 2. Fetching IBOVESPA and PETR4 from Yahoo Finance via AllOrigins proxy
-      const fetchStock = async (ticker: string) => {
+      setMarketData({
+        usd:   data.usd,
+        btc:   data.btc,
+        ibov:  data.ibov,
+        stock: data.stock,
+        updatedAt: data.updatedAt,
+      });
+
+      const updated = data.updatedAt ? new Date(data.updatedAt) : new Date();
+      setLastUpdated(updated);
+      localStorage.setItem('vorix_radar_market', JSON.stringify({ ...data, savedAt: Date.now() }));
+    } catch (err: any) {
+      console.error('Radar market error:', err);
+      // tenta cache
+      const cached = localStorage.getItem('vorix_radar_market');
+      if (cached) {
         try {
-          const url = encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1m&range=1d`);
-          const res = await fetch(`https://api.allorigins.win/get?url=${url}`);
-          if (!res.ok) throw new Error('Proxy error');
-          const wrapper = await res.json();
-          const data = JSON.parse(wrapper.contents);
-          const meta = data.chart.result[0].meta;
-          return {
-            price: meta.regularMarketPrice,
-            prevClose: meta.previousClose
-          };
-        } catch (e) {
-          console.warn(`Failed to fetch ${ticker}:`, e);
-          return null;
-        }
-      };
-
-      const [ibovRes, petrRes] = await Promise.all([
-        fetchStock('^BVSP'),
-        fetchStock('PETR4.SA')
-      ]);
-
-      const newData: MarketData = {
-        usd: {
-          bid: awesomeData.USDBRL?.bid || '0.00',
-          pctChange: awesomeData.USDBRL?.pctChange || '0.00',
-          name: 'Dólar Comercial'
-        },
-        btc: {
-          bid: awesomeData.BTCBRL?.bid || '0.00',
-          pctChange: awesomeData.BTCBRL?.pctChange || '0.00',
-          name: 'Bitcoin'
-        },
-        ibov: {
-          bid: ibovRes?.price ? ibovRes.price.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '0',
-          pctChange: ibovRes?.price && ibovRes?.prevClose ? (((ibovRes.price - ibovRes.prevClose) / ibovRes.prevClose) * 100).toFixed(2) : '0.00',
-          name: 'Ibovespa',
-          symbol: 'IBOV'
-        },
-        stock: {
-          bid: petrRes?.price ? petrRes.price.toFixed(2) : '0.00',
-          pctChange: petrRes?.price && petrRes?.prevClose ? (((petrRes.price - petrRes.prevClose) / petrRes.prevClose) * 100).toFixed(2) : '0.00',
-          name: 'Petrobras PN',
-          symbol: 'PETR4'
-        }
-      };
-
-      setMarketData(newData);
-      const now = new Date();
-      setLastUpdated(now);
-      
-      // Update cache
-      localStorage.setItem('vorix_radar_market_data', JSON.stringify(newData));
-      localStorage.setItem('vorix_radar_last_updated', now.toISOString());
-    } catch (err) {
-      console.error('Error fetching market data:', err);
-      setError('Falha ao carregar dados do mercado. Verifique sua conexão.');
-      
-      // Fallback to AwesomeAPI only if Yahoo fails
-      try {
-        const timestamp = Date.now();
-        const awesomeResponse = await fetch(`https://economia.awesomeapi.com.br/json/last/USD-BRL,BTC-BRL?t=${timestamp}`);
-        const awesomeData = await awesomeResponse.json();
-        const fallbackData: MarketData = {
-          usd: { 
-            bid: awesomeData.USDBRL?.bid || '0.00', 
-            pctChange: awesomeData.USDBRL?.pctChange || '0.00', 
-            name: 'Dólar Comercial' 
-          },
-          btc: { 
-            bid: awesomeData.BTCBRL?.bid || '0.00', 
-            pctChange: awesomeData.BTCBRL?.pctChange || '0.00', 
-            name: 'Bitcoin' 
-          },
-          ibov: marketData?.ibov || { bid: '126.000', pctChange: '0.00', name: 'Ibovespa', symbol: 'IBOV' },
-          stock: marketData?.stock || { bid: '38.42', pctChange: '0.00', name: 'Petrobras PN', symbol: 'PETR4' }
-        };
-        setMarketData(fallbackData);
-      } catch (e) {
-        setError('Erro crítico ao buscar dados financeiros.');
+          const c = JSON.parse(cached);
+          setMarketData({ usd: c.usd, btc: c.btc, ibov: c.ibov, stock: c.stock });
+          if (c.updatedAt) setLastUpdated(new Date(c.updatedAt));
+        } catch {}
+      } else {
+        setDataError('Não foi possível carregar dados do mercado. Verifique sua conexão.');
       }
     } finally {
       setIsLoadingData(false);
     }
   };
 
-  const generateTips = async () => {
-    // Only show loading if we don't have cached tips
-    if (!localStorage.getItem('vorix_radar_tips')) {
-      setIsLoadingTips(true);
+  const generateAIContent = async () => {
+    const cachedContent = localStorage.getItem('vorix_radar_ai');
+    const today = new Date().toISOString().split('T')[0];
+    if (cachedContent) {
+      try {
+        const c = JSON.parse(cachedContent);
+        if (c.date === today) {
+          setTips(c.tips || []);
+          setNews(c.news || []);
+          setIsLoadingTips(false);
+          setIsLoadingNews(false);
+          return;
+        }
+      } catch {}
     }
+
     try {
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
-      
-      const prompt = `
-        Gere 3 dicas de investimentos reais e atuais para o mercado brasileiro hoje. 
-        As dicas devem ser de fácil acesso (ex: Tesouro Direto, CDBs, Fundos Imobiliários populares ou Ações consolidadas).
-        
-        IMPORTANTE: 
-        - As dicas devem ser baseadas em tendências reais de mercado (março de 2026).
-        - Deixe claro que são apenas sugestões e não garantia de lucro.
-        
-        Retorne no formato JSON:
-        Array<{
-          title: string,
-          description: string,
-          risk: "low" | "medium" | "high",
-          category: string
-        }>
-      `;
+
+      const prompt = `Você é um analista financeiro sênior do mercado brasileiro. Hoje é ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
+
+Gere um JSON com DOIS campos:
+
+1. "tips": Array com 3 dicas de investimentos práticas e atuais para o mercado brasileiro. Exemplos: Tesouro Direto, CDB, FIIs, ações blue chips (ex: VALE3, ITUB4, WEGE3).
+
+2. "news": Array com 2 notícias recentes de mercado financeiro brasileiro (REAL - pode mencionar movimentos de juros SELIC, IBOVESPA, câmbio, resultado de empresas, IPOs, tendências).
+
+Formato exato:
+{
+  "tips": [
+    {
+      "title": "Nome do investimento",
+      "description": "Descrição clara de até 120 caracteres",
+      "risk": "low" | "medium" | "high",
+      "category": "Renda Fixa" | "Ações" | "FII" | "Cripto" | "Internacional"
+    }
+  ],
+  "news": [
+    {
+      "headline": "Título da notícia em até 80 caracteres",
+      "summary": "Resumo de até 140 caracteres explicando o impacto para investidores",
+      "tag": "Bolsa" | "Câmbio" | "Juros" | "Cripto" | "Macro",
+      "sentiment": "positive" | "negative" | "neutral"
+    }
+  ]
+}`;
 
       const result = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.0-flash',
         contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                description: { type: Type.STRING },
-                risk: { type: Type.STRING, enum: ["low", "medium", "high"] },
-                category: { type: Type.STRING }
-              },
-              required: ["title", "description", "risk", "category"]
-            }
-          }
-        }
+        config: { responseMimeType: 'application/json' }
       });
 
-      const generatedTips = JSON.parse(result.text);
-      setTips(generatedTips);
-      
-      // Update cache
-      localStorage.setItem('vorix_radar_tips', JSON.stringify(generatedTips));
+      const parsed = JSON.parse(result.text || '{}');
+      const tipsData: InvestmentTip[] = parsed.tips || [];
+      const newsData: NewsItem[] = parsed.news || [];
+
+      setTips(tipsData);
+      setNews(newsData);
+      localStorage.setItem('vorix_radar_ai', JSON.stringify({ date: today, tips: tipsData, news: newsData }));
     } catch (err) {
-      console.error('Error generating tips:', err);
-      // Fallback tips if AI fails
-      const fallbackTips: InvestmentTip[] = [
+      console.error('AI content error:', err);
+      setTips([
         { title: 'Tesouro Selic 2029', description: 'Ideal para reserva de emergência com liquidez diária e baixo risco.', risk: 'low', category: 'Renda Fixa' },
-        { title: 'CDB 110% do CDI', description: 'Ótima opção para superar a inflação com garantia do FGC.', risk: 'low', category: 'Renda Fixa' },
-        { title: 'FIIs de Papel', description: 'Dividendos mensais isentos de IR, mas com volatilidade de mercado.', risk: 'medium', category: 'Variável' }
-      ];
-      setTips(fallbackTips);
+        { title: 'CDB 110% CDI', description: 'Retorno superior à poupança com garantia do FGC até R$ 250 mil.', risk: 'low', category: 'Renda Fixa' },
+        { title: 'FIIs de Papel (IRDM11)', description: 'Dividendos mensais isentos de IR, expostos a IPCA e CDI.', risk: 'medium', category: 'FII' },
+      ]);
+      setNews([
+        { headline: 'Ibovespa opera próximo dos 130 mil pontos', summary: 'Bolsa brasileira sustenta recuperação impulsionada por ações de commodities.', tag: 'Bolsa', sentiment: 'positive' },
+        { headline: 'BC mantém SELIC em 14,75% ao ano', summary: 'Copom sinalizou pausa no ciclo de alta. Mercado ajusta projeções para o fim do ano.', tag: 'Juros', sentiment: 'neutral' },
+      ]);
     } finally {
       setIsLoadingTips(false);
+      setIsLoadingNews(false);
     }
   };
 
   useEffect(() => {
-    // Load from cache first for instant feel
-    const cachedData = localStorage.getItem('vorix_radar_market_data');
-    const cachedTips = localStorage.getItem('vorix_radar_tips');
-    const cachedTime = localStorage.getItem('vorix_radar_last_updated');
-
-    if (cachedData) {
+    // Cache instantâneo
+    const cachedMarket = localStorage.getItem('vorix_radar_market');
+    if (cachedMarket) {
       try {
-        setMarketData(JSON.parse(cachedData));
-        setIsLoadingData(false);
-      } catch (e) {
-        console.error('Error parsing cached market data');
-      }
+        const c = JSON.parse(cachedMarket);
+        const age = Date.now() - (c.savedAt || 0);
+        if (age < 60 * 60 * 1000) { // menos de 1h
+          setMarketData({ usd: c.usd, btc: c.btc, ibov: c.ibov, stock: c.stock });
+          if (c.updatedAt) setLastUpdated(new Date(c.updatedAt));
+          setIsLoadingData(false);
+        }
+      } catch {}
     }
 
-    if (cachedTips) {
-      try {
-        setTips(JSON.parse(cachedTips));
-        setIsLoadingTips(false);
-      } catch (e) {
-        console.error('Error parsing cached tips');
-      }
-    }
-
-    if (cachedTime) {
-      setLastUpdated(new Date(cachedTime));
-    }
-
-    // Fetch fresh data in background
     fetchMarketData();
-    generateTips();
-    
-    // Track mission progress
+    generateAIContent();
     updateMissionProgress(user.uid, 'Explorador de Radar');
     updateMissionProgress(user.uid, 'Analista de Radar');
   }, []);
 
+  const isFree = isPlanFree(user);
+
+  const MarketCard = ({
+    icon: Icon,
+    iconColor,
+    bgColor,
+    name,
+    symbol,
+    bid,
+    pctChange,
+    prefix = 'R$ ',
+    suffix = '',
+    delay = 0,
+  }: {
+    icon: React.ElementType; iconColor: string; bgColor: string;
+    name: string; symbol?: string; bid: string; pctChange: string;
+    prefix?: string; suffix?: string; delay?: number;
+  }) => {
+    const pct = parseFloat(pctChange || '0');
+    const isPositive = pct >= 0;
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay }}
+        className="bg-zinc-900 border border-zinc-800 p-4 lg:p-6 rounded-2xl lg:rounded-3xl space-y-3 lg:space-y-4 relative overflow-hidden group hover:border-zinc-700 transition-all"
+      >
+        <div className="flex items-center justify-between">
+          <div className={`p-2 lg:p-3 ${bgColor} rounded-lg lg:rounded-2xl`}>
+            <Icon className={`w-4 h-4 lg:w-6 lg:h-6 ${iconColor}`} />
+          </div>
+          <div className={`flex items-center space-x-1 text-[10px] lg:text-xs font-bold px-2 py-1 rounded-full ${isPositive ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+            {isPositive ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
+            <span>{Math.abs(pct).toFixed(2)}%</span>
+          </div>
+        </div>
+        <div className="space-y-0.5 lg:space-y-1">
+          <p className="text-zinc-500 text-[8px] lg:text-xs font-bold uppercase tracking-widest">{symbol || name}</p>
+          <div className="relative">
+            <p className={`text-lg lg:text-3xl font-black tracking-tighter ${isFree ? 'blur-md select-none' : ''}`}>
+              {prefix}{bid}{suffix}
+            </p>
+            {isFree && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Zap className={`w-5 h-5 ${iconColor} opacity-60`} />
+              </div>
+            )}
+          </div>
+          <p className="text-zinc-600 text-[8px] lg:text-[10px] font-medium">{name}</p>
+        </div>
+        <div className={`absolute -bottom-6 -right-6 w-20 h-20 rounded-full blur-2xl opacity-10 ${bgColor}`} />
+      </motion.div>
+    );
+  };
+
   return (
-    <div className="space-y-6 lg:space-y-10">
-      {/* Market Header */}
+    <div className="space-y-6 lg:space-y-10 pb-20">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <h2 className="text-2xl lg:text-4xl font-bold tracking-tight">Radar Vorix</h2>
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-zinc-500 text-xs lg:text-lg">Monitoramento em tempo real do mercado e oportunidades.</p>
+            <p className="text-zinc-500 text-xs lg:text-lg">Mercado, oportunidades e notícias financeiras.</p>
             {lastUpdated && (
-              <span className="text-[8px] lg:text-[10px] font-bold text-zinc-600 uppercase tracking-widest bg-zinc-900 px-2 py-1 rounded-full">
-                Atualizado: {lastUpdated.toLocaleTimeString()}
+              <span className="text-[8px] lg:text-[10px] font-bold text-zinc-600 uppercase tracking-widest bg-zinc-900 px-2 py-1 rounded-full border border-zinc-800">
+                Atualizado: {lastUpdated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
           </div>
         </div>
-        <button 
-          onClick={() => { fetchMarketData(); generateTips(); }}
-          className="flex items-center justify-center space-x-2 px-5 py-2.5 lg:px-6 lg:py-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl lg:rounded-2xl text-xs lg:text-base font-bold transition-all border border-zinc-800 active:scale-95 w-full md:w-auto"
+        <button
+          onClick={() => { fetchMarketData(); generateAIContent(); }}
+          className="flex items-center justify-center space-x-2 px-5 py-2.5 lg:px-6 lg:py-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl lg:rounded-2xl text-xs lg:text-sm font-bold transition-all border border-zinc-800 active:scale-95 w-full md:w-auto"
         >
-          <RefreshCw className={`w-4 h-4 lg:w-5 lg:h-5 ${(isLoadingData || isLoadingTips) ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${(isLoadingData || isLoadingTips) ? 'animate-spin' : ''}`} />
           <span>Atualizar Radar</span>
         </button>
       </div>
@@ -278,152 +279,132 @@ export const RadarView: React.FC<RadarViewProps> = ({ user }) => {
           Array(4).fill(0).map((_, i) => (
             <div key={i} className="h-32 lg:h-40 bg-zinc-900/50 border border-zinc-800 rounded-2xl lg:rounded-3xl animate-pulse" />
           ))
+        ) : dataError && !marketData ? (
+          <div className="col-span-full p-6 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-center">
+            <AlertCircle className="w-8 h-8 text-rose-500 mx-auto mb-2" />
+            <p className="text-rose-400 text-sm font-bold">{dataError}</p>
+          </div>
         ) : marketData ? (
           <>
-            {/* USD */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-zinc-900 border border-zinc-800 p-4 lg:p-6 rounded-2xl lg:rounded-3xl space-y-3 lg:space-y-4 relative overflow-hidden group"
-            >
-              <div className="flex items-center justify-between">
-                <div className="p-2 lg:p-3 bg-blue-500/10 rounded-lg lg:rounded-2xl border border-blue-500/20">
-                  <DollarSign className="w-4 h-4 lg:w-6 lg:h-6 text-blue-500" />
-                </div>
-                <div className={`flex items-center space-x-1 text-[10px] lg:text-xs font-bold ${parseFloat(marketData.usd?.pctChange || '0') >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {parseFloat(marketData.usd?.pctChange || '0') >= 0 ? <TrendingUp className="w-2.5 h-2.5 lg:w-3 lg:h-3" /> : <TrendingDown className="w-2.5 h-2.5 lg:w-3 lg:h-3" />}
-                  <span>{marketData.usd?.pctChange || '0.00'}%</span>
-                </div>
-              </div>
-              <div className="space-y-0.5 lg:space-y-1">
-                <p className="text-zinc-500 text-[8px] lg:text-xs font-bold uppercase tracking-widest truncate">{marketData.usd?.name || 'Dólar'}</p>
-                <div className="relative">
-                  <p className={`text-lg lg:text-3xl font-bold tracking-tighter ${(user.plan === 'trial' || !user.plan) ? 'blur-md select-none' : ''}`}>
-                    R$ {parseFloat(marketData.usd?.bid || '0').toFixed(2)}
-                  </p>
-                  {(user.plan === 'trial' || !user.plan) && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Zap className="w-5 h-5 text-orange-500 opacity-50" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-
-            {/* BTC */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-zinc-900 border border-zinc-800 p-4 lg:p-6 rounded-2xl lg:rounded-3xl space-y-3 lg:space-y-4 relative overflow-hidden group"
-            >
-              <div className="flex items-center justify-between">
-                <div className="p-2 lg:p-3 bg-orange-500/10 rounded-lg lg:rounded-2xl border border-orange-500/20">
-                  <Coins className="w-4 h-4 lg:w-6 lg:h-6 text-orange-500" />
-                </div>
-                <div className={`flex items-center space-x-1 text-[10px] lg:text-xs font-bold ${parseFloat(marketData.btc?.pctChange || '0') >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {parseFloat(marketData.btc?.pctChange || '0') >= 0 ? <TrendingUp className="w-2.5 h-2.5 lg:w-3 lg:h-3" /> : <TrendingDown className="w-2.5 h-2.5 lg:w-3 lg:h-3" />}
-                  <span>{marketData.btc?.pctChange || '0.00'}%</span>
-                </div>
-              </div>
-              <div className="space-y-0.5 lg:space-y-1">
-                <p className="text-zinc-500 text-[8px] lg:text-xs font-bold uppercase tracking-widest truncate">{marketData.btc?.name || 'Bitcoin'}</p>
-                <div className="relative">
-                  <p className={`text-lg lg:text-3xl font-bold tracking-tighter ${(user.plan === 'trial' || !user.plan) ? 'blur-md select-none' : ''}`}>
-                    R$ {parseFloat(marketData.btc?.bid || '0').toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
-                  </p>
-                  {(user.plan === 'trial' || !user.plan) && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Zap className="w-5 h-5 text-orange-500 opacity-50" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-
-            {/* IBOV */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-zinc-900 border border-zinc-800 p-4 lg:p-6 rounded-2xl lg:rounded-3xl space-y-3 lg:space-y-4 relative overflow-hidden group"
-            >
-              <div className="flex items-center justify-between">
-                <div className="p-2 lg:p-3 bg-purple-500/10 rounded-lg lg:rounded-2xl border border-purple-500/20">
-                  <BarChart3 className="w-4 h-4 lg:w-6 lg:h-6 text-purple-500" />
-                </div>
-                <div className={`flex items-center space-x-1 text-[10px] lg:text-xs font-bold ${parseFloat(marketData.ibov?.pctChange || '0') >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {parseFloat(marketData.ibov?.pctChange || '0') >= 0 ? <TrendingUp className="w-2.5 h-2.5 lg:w-3 lg:h-3" /> : <TrendingDown className="w-2.5 h-2.5 lg:w-3 lg:h-3" />}
-                  <span>{marketData.ibov?.pctChange || '0.00'}%</span>
-                </div>
-              </div>
-              <div className="space-y-0.5 lg:space-y-1">
-                <p className="text-zinc-500 text-[8px] lg:text-xs font-bold uppercase tracking-widest truncate">{marketData.ibov?.name || 'Ibovespa'}</p>
-                <div className="relative">
-                  <p className={`text-lg lg:text-3xl font-bold tracking-tighter ${(user.plan === 'trial' || !user.plan) ? 'blur-md select-none' : ''}`}>
-                    {marketData.ibov?.bid || '0'} pts
-                  </p>
-                  {(user.plan === 'trial' || !user.plan) && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Zap className="w-5 h-5 text-purple-500 opacity-50" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Stock (PETR4) */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-zinc-900 border border-zinc-800 p-4 lg:p-6 rounded-2xl lg:rounded-3xl space-y-3 lg:space-y-4 relative overflow-hidden group"
-            >
-              <div className="flex items-center justify-between">
-                <div className="p-2 lg:p-3 bg-emerald-500/10 rounded-lg lg:rounded-2xl border border-emerald-500/20">
-                  <TrendingUp className="w-4 h-4 lg:w-6 lg:h-6 text-emerald-500" />
-                </div>
-                <div className={`flex items-center space-x-1 text-[10px] lg:text-xs font-bold ${parseFloat(marketData.stock?.pctChange || '0') >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {parseFloat(marketData.stock?.pctChange || '0') >= 0 ? <TrendingUp className="w-2.5 h-2.5 lg:w-3 lg:h-3" /> : <TrendingDown className="w-2.5 h-2.5 lg:w-3 lg:h-3" />}
-                  <span>{marketData.stock?.pctChange || '0.00'}%</span>
-                </div>
-              </div>
-              <div className="space-y-0.5 lg:space-y-1">
-                <p className="text-zinc-500 text-[8px] lg:text-xs font-bold uppercase tracking-widest truncate">{marketData.stock?.symbol || 'PETR4'}</p>
-                <div className="relative">
-                  <p className={`text-lg lg:text-3xl font-bold tracking-tighter ${(user.plan === 'trial' || !user.plan) ? 'blur-md select-none' : ''}`}>
-                    R$ {marketData.stock?.bid || '0.00'}
-                  </p>
-                  {(user.plan === 'trial' || !user.plan) && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Zap className="w-5 h-5 text-emerald-500 opacity-50" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
+            <MarketCard
+              icon={DollarSign} iconColor="text-blue-400" bgColor="bg-blue-500/10"
+              name={marketData.usd.name} bid={marketData.usd.bid}
+              pctChange={marketData.usd.pctChange} delay={0}
+            />
+            <MarketCard
+              icon={Coins} iconColor="text-orange-400" bgColor="bg-orange-500/10"
+              name={marketData.btc.name} bid={marketData.btc.bid}
+              pctChange={marketData.btc.pctChange} delay={0.05}
+            />
+            <MarketCard
+              icon={BarChart3} iconColor="text-purple-400" bgColor="bg-purple-500/10"
+              name={marketData.ibov.name} symbol={marketData.ibov.symbol}
+              bid={marketData.ibov.bid} pctChange={marketData.ibov.pctChange}
+              prefix="" suffix=" pts" delay={0.1}
+            />
+            <MarketCard
+              icon={TrendingUpIcon} iconColor="text-emerald-400" bgColor="bg-emerald-500/10"
+              name={marketData.stock.name} symbol={marketData.stock.symbol}
+              bid={marketData.stock.bid} pctChange={marketData.stock.pctChange} delay={0.15}
+            />
           </>
-        ) : (
-          <div className="col-span-full p-6 lg:p-8 bg-rose-500/10 border border-rose-500/20 rounded-2xl lg:rounded-3xl text-center">
-            <AlertCircle className="w-6 h-6 lg:w-8 lg:h-8 text-rose-500 mx-auto mb-2" />
-            <p className="text-rose-500 text-xs lg:text-base font-bold">{error}</p>
-          </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Investment Tips */}
+      {/* Aviso plano free */}
+      {isFree && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-4 p-4 bg-orange-500/10 border border-orange-500/20 rounded-2xl"
+        >
+          <Zap className="w-5 h-5 text-orange-500 shrink-0" />
+          <div>
+            <p className="text-orange-400 text-sm font-black">Valores com Spoiler ativo</p>
+            <p className="text-zinc-500 text-xs">Faça upgrade para ver dólar, BTC, IBOV e PETR4 em tempo real.</p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Notícias do Mercado */}
+      <div className="space-y-4 lg:space-y-5">
+        <div className="flex items-center space-x-3">
+          <div className="p-1.5 lg:p-2 bg-zinc-800 rounded-lg lg:rounded-xl border border-zinc-700">
+            <Newspaper className="w-4 h-4 lg:w-5 lg:h-5 text-zinc-300" />
+          </div>
+          <h3 className="text-lg lg:text-2xl font-bold">Notícias do Mercado</h3>
+          {isLoadingNews && <Loader2 className="w-4 h-4 animate-spin text-zinc-600" />}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
+          <AnimatePresence mode="popLayout">
+            {news.map((item, i) => (
+              <motion.div
+                key={i}
+                layout
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.05 }}
+                className={`relative p-5 lg:p-7 rounded-2xl lg:rounded-3xl border space-y-3 overflow-hidden ${
+                  isFree ? 'border-zinc-800 bg-zinc-900/50' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700 transition-all'
+                }`}
+              >
+                {/* Linha lateral colorida */}
+                <div className={`absolute left-0 top-4 bottom-4 w-1 rounded-full ${
+                  item.sentiment === 'positive' ? 'bg-emerald-500' :
+                  item.sentiment === 'negative' ? 'bg-rose-500' : 'bg-zinc-600'
+                }`} />
+
+                <div className="flex items-center justify-between pl-3">
+                  <span className={`px-2.5 py-1 rounded-full text-[9px] lg:text-[11px] font-bold uppercase tracking-widest border ${
+                    item.sentiment === 'positive' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                    item.sentiment === 'negative' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                    'bg-zinc-800 text-zinc-400 border-zinc-700'
+                  }`}>
+                    {item.tag}
+                  </span>
+                  <span className={`text-[9px] lg:text-[10px] font-bold uppercase tracking-widest ${
+                    item.sentiment === 'positive' ? 'text-emerald-500' :
+                    item.sentiment === 'negative' ? 'text-rose-500' : 'text-zinc-500'
+                  }`}>
+                    {item.sentiment === 'positive' ? '▲ Alta' : item.sentiment === 'negative' ? '▼ Baixa' : '● Neutro'}
+                  </span>
+                </div>
+
+                <div className={`pl-3 space-y-1.5 ${isFree ? 'blur-sm select-none' : ''}`}>
+                  <h4 className="text-sm lg:text-base font-black text-white leading-snug">{item.headline}</h4>
+                  <p className="text-zinc-500 text-xs lg:text-sm leading-relaxed">{item.summary}</p>
+                </div>
+
+                {isFree && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
+                    <Star className="w-5 h-5 text-orange-500 mb-1" />
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest">Upgrade para ver</span>
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {isLoadingNews && Array(2).fill(0).map((_, i) => (
+            <div key={i} className="h-28 bg-zinc-900/50 border border-zinc-800 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+
+      {/* Dicas de Investimento */}
       <div className="space-y-4 lg:space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 lg:space-x-3">
             <div className="p-1.5 lg:p-2 bg-orange-600/10 rounded-lg lg:rounded-xl">
               <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 text-orange-500" />
             </div>
-            <h3 className="text-lg lg:text-2xl font-bold">Dicas de Investimento</h3>
+            <h3 className="text-lg lg:text-2xl font-bold">Oportunidades IA</h3>
           </div>
           {isLoadingTips && <Loader2 className="w-4 h-4 lg:w-5 lg:h-5 animate-spin text-zinc-500" />}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
           <AnimatePresence mode="popLayout">
             {tips.map((tip, i) => (
               <motion.div
@@ -438,33 +419,35 @@ export const RadarView: React.FC<RadarViewProps> = ({ user }) => {
                     {tip.category}
                   </span>
                   <span className={`px-2 py-0.5 lg:px-3 lg:py-1 rounded-full text-[8px] lg:text-[10px] font-bold uppercase tracking-widest border ${
-                    tip.risk === 'low' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                    tip.risk === 'medium' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                    'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                    tip.risk === 'low'    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                    tip.risk === 'medium' ? 'bg-amber-500/10   text-amber-500   border-amber-500/20'   :
+                                           'bg-rose-500/10    text-rose-500    border-rose-500/20'
                   }`}>
-                    Risco {tip.risk === 'low' ? 'Baixo' : tip.risk === 'medium' ? 'Médio' : 'Alto'}
+                    {tip.risk === 'low' ? 'Baixo' : tip.risk === 'medium' ? 'Médio' : 'Alto'}
                   </span>
                 </div>
+
                 <div className="space-y-1 lg:space-y-2 relative">
-                  <h4 className={`text-base lg:text-xl font-bold group-hover:text-orange-500 transition-colors ${(user.plan === 'trial' || !user.plan) ? 'blur-[4px] select-none' : ''}`}>
+                  <h4 className={`text-base lg:text-xl font-bold group-hover:text-orange-500 transition-colors ${isFree ? 'blur-[4px] select-none' : ''}`}>
                     {tip.title}
                   </h4>
-                  <p className={`text-zinc-500 text-xs lg:text-base leading-relaxed ${(user.plan === 'trial' || !user.plan) ? 'blur-md select-none' : ''}`}>
+                  <p className={`text-zinc-500 text-xs lg:text-sm leading-relaxed ${isFree ? 'blur-md select-none' : ''}`}>
                     {tip.description}
                   </p>
-                  {(user.plan === 'trial' || !user.plan) && (
+                  {isFree && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-xl">
                       <Star className="w-6 h-6 text-orange-500 mb-1" />
                       <span className="text-[10px] font-black text-white uppercase tracking-widest">Upgrade para ver</span>
                     </div>
                   )}
                 </div>
-                <div className="pt-2 lg:pt-4 flex items-center justify-between">
-                  <a 
-                    href="https://www.instagram.com/br.financeiro/" 
-                    target="_blank" 
+
+                <div className="pt-2 flex items-center justify-between">
+                  <a
+                    href="https://www.instagram.com/br.financeiro/"
+                    target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[10px] lg:text-xs font-bold text-zinc-400 hover:text-white flex items-center space-x-1 transition-colors"
+                    className="text-[10px] lg:text-xs font-bold text-zinc-400 hover:text-orange-500 flex items-center space-x-1 transition-colors"
                   >
                     <span>Saiba mais</span>
                     <ExternalLink className="w-2.5 h-2.5 lg:w-3 lg:h-3" />
@@ -473,21 +456,24 @@ export const RadarView: React.FC<RadarViewProps> = ({ user }) => {
               </motion.div>
             ))}
           </AnimatePresence>
-        </div>
 
-        {/* Disclaimer */}
-        <div className="p-4 lg:p-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl lg:rounded-3xl flex items-start space-x-3 lg:space-x-4">
-          <div className="p-1.5 lg:p-2 bg-blue-500/10 rounded-lg lg:rounded-xl mt-0.5 lg:mt-1">
-            <Info className="w-4 h-4 lg:w-5 lg:h-5 text-blue-500" />
-          </div>
-          <div className="space-y-0.5 lg:space-y-1">
-            <p className="text-xs lg:text-sm font-bold text-zinc-300">Aviso Legal</p>
-            <p className="text-[9px] lg:text-xs text-zinc-500 leading-relaxed">
-              As informações e dicas apresentadas no Radar Vorix são baseadas em dados de mercado e análises da nossa inteligência artificial. 
-              Elas não constituem recomendações oficiais de investimento ou garantia de lucro. O mercado financeiro envolve riscos e o desempenho passado não garante resultados futuros. 
-              Sempre consulte um profissional certificado antes de tomar decisões financeiras importantes.
-            </p>
-          </div>
+          {isLoadingTips && Array(3).fill(0).map((_, i) => (
+            <div key={i} className="h-40 bg-zinc-900/50 border border-zinc-800 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+
+      {/* Disclaimer */}
+      <div className="p-4 lg:p-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl lg:rounded-3xl flex items-start space-x-3 lg:space-x-4">
+        <div className="p-1.5 lg:p-2 bg-blue-500/10 rounded-lg lg:rounded-xl mt-0.5">
+          <Info className="w-4 h-4 lg:w-5 lg:h-5 text-blue-500" />
+        </div>
+        <div className="space-y-0.5 lg:space-y-1">
+          <p className="text-xs lg:text-sm font-bold text-zinc-300">Aviso Legal</p>
+          <p className="text-[9px] lg:text-xs text-zinc-500 leading-relaxed">
+            As informações do Radar Vorix são geradas por inteligência artificial e dados de mercado públicos.
+            Não constituem recomendações oficiais de investimento ou garantia de lucro. Sempre consulte um profissional certificado antes de tomar decisões financeiras.
+          </p>
         </div>
       </div>
     </div>

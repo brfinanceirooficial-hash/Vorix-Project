@@ -509,4 +509,87 @@ app.post("/api/export-pdf", async (req, res) => {
   }
 });
 
+// ============================================================
+// RADAR — Dados de Mercado em tempo real
+// ============================================================
+
+// Cache em memória (60 min)
+let radarCache: { data: any; ts: number } | null = null;
+const RADAR_TTL = 60 * 60 * 1000; // 60 minutos
+
+app.get('/api/radar-data', async (_req, res) => {
+  try {
+    const now = Date.now();
+    if (radarCache && now - radarCache.ts < RADAR_TTL) {
+      return res.json({ success: true, cached: true, ...radarCache.data });
+    }
+
+    // 1. AwesomeAPI: USD + BTC
+    const awesomeRes = await fetch(
+      `https://economia.awesomeapi.com.br/json/last/USD-BRL,BTC-BRL?t=${now}`
+    );
+    const awesomeData: any = await awesomeRes.json();
+
+    // 2. Yahoo Finance server-side: PETR4 + IBOV
+    const fetchYahoo = async (ticker: string) => {
+      try {
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`;
+        const yRes = await fetch(url, {
+          headers: { 'User-Agent': 'Mozilla/5.0' }
+        });
+        if (!yRes.ok) throw new Error(`Yahoo status: ${yRes.status}`);
+        const yData: any = await yRes.json();
+        const meta = yData?.chart?.result?.[0]?.meta;
+        if (!meta) throw new Error('No meta');
+        const price = meta.regularMarketPrice ?? 0;
+        const prev  = meta.previousClose ?? meta.chartPreviousClose ?? price;
+        return { price, prev };
+      } catch (e) {
+        console.warn(`Yahoo fetch failed for ${ticker}:`, e);
+        return null;
+      }
+    };
+
+    const [ibovRaw, petrRaw] = await Promise.all([
+      fetchYahoo('^BVSP'),
+      fetchYahoo('PETR4.SA'),
+    ]);
+
+    const pct = (price: number, prev: number) =>
+      prev > 0 ? (((price - prev) / prev) * 100).toFixed(2) : '0.00';
+
+    const payload = {
+      usd: {
+        bid:       Number(awesomeData.USDBRL?.bid  || 0).toFixed(2),
+        pctChange: Number(awesomeData.USDBRL?.pctChange || 0).toFixed(2),
+        name: 'Dólar Comercial',
+      },
+      btc: {
+        bid:       Number(awesomeData.BTCBRL?.bid  || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 }),
+        pctChange: Number(awesomeData.BTCBRL?.pctChange || 0).toFixed(2),
+        name: 'Bitcoin',
+      },
+      ibov: {
+        bid:       ibovRaw ? ibovRaw.price.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '—',
+        pctChange: ibovRaw ? pct(ibovRaw.price, ibovRaw.prev) : '0.00',
+        name: 'Ibovespa',
+        symbol: 'IBOV',
+      },
+      stock: {
+        bid:       petrRaw ? petrRaw.price.toFixed(2) : '—',
+        pctChange: petrRaw ? pct(petrRaw.price, petrRaw.prev) : '0.00',
+        name: 'Petrobras PN',
+        symbol: 'PETR4',
+      },
+      updatedAt: new Date().toISOString(),
+    };
+
+    radarCache = { data: payload, ts: now };
+    return res.json({ success: true, cached: false, ...payload });
+  } catch (error: any) {
+    console.error('Radar data error:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default app;
