@@ -32,8 +32,8 @@ const mpClient = new MercadoPagoConfig({
 // ============================================================
 
 const PLANS: Record<string, { title: string; price: number }> = {
-  pro:     { title: 'Vorix Finance — Plano Pro',     price: 10.99 },
-  premium: { title: 'Vorix Finance — Plano Premium', price: 17.99 },
+  pro:     { title: 'Vorix Finance — Plano Pro',     price: 0.99 }, // TESTE — reverter para 10.99
+  premium: { title: 'Vorix Finance — Plano Premium', price: 0.99 }, // TESTE — reverter para 17.99
 };
 
 async function activatePlan(userId: string, planId: string, mpSubscriptionId?: string, mpPayerId?: string) {
