@@ -910,6 +910,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                     <span className="text-[7px] font-bold text-zinc-500 uppercase tracking-widest">{daysLeft}D</span>
                   </div>
                 )}
+                {user.subscriptionStatus === 'active' && user.plan && user.plan !== 'trial' && (
+                  <div className={`px-1.5 py-0.5 rounded-full flex items-center space-x-1 border ${
+                    user.plan === 'premium'
+                      ? 'bg-emerald-500/20 border-emerald-500/30'
+                      : 'bg-orange-500/20 border-orange-500/30'
+                  }`}>
+                    <Star className={`w-2 h-2 fill-current ${
+                      user.plan === 'premium' ? 'text-emerald-400' : 'text-orange-400'
+                    }`} />
+                    <span className={`text-[7px] font-bold uppercase tracking-widest ${
+                      user.plan === 'premium' ? 'text-emerald-400' : 'text-orange-400'
+                    }`}>{user.plan === 'premium' ? 'PREMIUM' : 'PRO'}</span>
+                  </div>
+                )}
              </div>
              <motion.button 
                 whileTap={{ scale: 0.95 }}
@@ -966,6 +980,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                     <Clock className="w-3 h-3 text-orange-500" />
                     <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{daysLeft} dias de teste</span>
                   </div>
+                )}
+                {user.subscriptionStatus === 'active' && user.plan && user.plan !== 'trial' && (
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    onClick={() => setView('subscription')}
+                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border transition-all ${
+                      user.plan === 'premium'
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                        : 'bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20'
+                    }`}
+                  >
+                    <Star className="w-3 h-3 fill-current" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">
+                      Cliente {user.plan === 'premium' ? 'Premium' : 'Pro'} ✓
+                    </span>
+                  </motion.button>
                 )}
                 {user.subscriptionStatus === 'trialing' && (
                   <motion.button
