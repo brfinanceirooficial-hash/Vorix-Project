@@ -1,13 +1,12 @@
+import dotenv from "dotenv";
+dotenv.config();
 import express from "express";
+import apiApp from "./api/index.js";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
-import dotenv from "dotenv";
-import apiApp from "./api/index.js";
 
-import fs from "fs";
-
-dotenv.config();
 
 const logFile = path.join(process.cwd(), "server.log");
 const logStream = fs.createWriteStream(logFile, { flags: 'a' });
@@ -25,8 +24,9 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Logging Middleware (Absolute Top)
   app.use((req, res, next) => {
-    log(`${req.method} ${req.url}`);
+    console.log(`[REQUEST] ${new Date().toISOString()} - ${req.method} ${req.url}`);
     next();
   });
 

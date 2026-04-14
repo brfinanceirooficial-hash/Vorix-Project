@@ -97,6 +97,8 @@ const snakeToCamelMap: Record<string, string> = {
   longest_streak: 'longestStreak',
   last_activity_date: 'lastActivityDate',
   streak_updated_today: 'streakUpdatedToday',
+  mp_subscription_id: 'mpSubscriptionId',
+  mp_payer_id: 'mpPayerId',
 };
 
 const camelToSnakeMap: Record<string, string> = Object.fromEntries(
@@ -413,6 +415,7 @@ export const setDoc = async (docPath: string, data: any) => {
       'last_ai_request_date', 'vorix_reward_claimed', 'notification_settings',
       'birth_date', 'phone', 'whatsapp_connected', 'whatsapp_number',
       'current_streak', 'longest_streak', 'last_activity_date', 'streak_updated_today',
+      'plan', 'mp_subscription_id', 'mp_payer_id',
     ]);
     const filteredData: Record<string, any> = {};
     for (const [k, v] of Object.entries(snakeData)) {
@@ -501,6 +504,7 @@ export const updateDoc = async (docPath: string, data: any) => {
       'last_ai_request_date', 'vorix_reward_claimed', 'notification_settings',
       'birth_date', 'phone', 'whatsapp_connected', 'whatsapp_number',
       'current_streak', 'longest_streak', 'last_activity_date', 'streak_updated_today',
+      'plan', 'mp_subscription_id', 'mp_payer_id',
     ]);
     finalData = {};
     for (const [k, v] of Object.entries(snakeData)) {

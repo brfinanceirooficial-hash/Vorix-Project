@@ -6,6 +6,7 @@ import { User } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dessert, Loader2 } from 'lucide-react';
 import { checkUserInactivity, updateStreakOnActivity } from './services/streakService';
+import confetti from 'canvas-confetti';
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,6 +89,25 @@ export default function App() {
       unsubscribeAuth();
       if (unsubscribeUser) unsubscribeUser();
     };
+  }, []);
+
+  // Efeito de Confete e Sucesso de Assinatura
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('status');
+    const plan = params.get('plan');
+
+    if (status === 'success') {
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#ff4d00', '#ffffff', '#000000']
+      });
+      
+      // Limpar a URL para não disparar de novo no refresh
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   if (loading) {

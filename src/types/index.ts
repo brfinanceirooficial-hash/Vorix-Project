@@ -18,6 +18,8 @@ export interface User {
   trialEndsAt?: any;
   subscriptionStatus?: 'trialing' | 'active' | 'expired';
   plan?: 'trial' | 'pro' | 'premium';
+  mpSubscriptionId?: string;
+  mpPayerId?: string;
   couponUsed?: string;
   trialReportUsed?: boolean;
   reportsCount?: number;
