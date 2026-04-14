@@ -17,7 +17,6 @@ import {
   Loader2,
   RefreshCw,
   ChevronRight,
-  X,
   Lock,
   User as UserIcon,
   Calendar,
@@ -77,16 +76,27 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
 
   // ── SDK MP ────────────────────────────────────────────────
   const mpRef = useRef<any>(null);
+  const [sdkError, setSdkError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Inicializar SDK do MP quando componente montar
-    if (window.MercadoPago && !mpRef.current) {
-      mpRef.current = new window.MercadoPago(
-        import.meta.env.VITE_MP_PUBLIC_KEY || '',
-        { locale: 'pt-BR' }
-      );
+  // Função para inicializar o SDK de forma lazy (chamada só quando necessário)
+  const getMPInstance = (): any | null => {
+    if (mpRef.current) return mpRef.current;
+    try {
+      const publicKey = import.meta.env.VITE_MP_PUBLIC_KEY;
+      if (!publicKey) {
+        console.warn('VITE_MP_PUBLIC_KEY não configurada');
+        return null;
+      }
+      if (typeof window !== 'undefined' && window.MercadoPago) {
+        mpRef.current = new window.MercadoPago(publicKey, { locale: 'pt-BR' });
+        return mpRef.current;
+      }
+    } catch (err) {
+      console.error('Erro ao inicializar MercadoPago SDK:', err);
+      setSdkError('SDK do Mercado Pago com erro. Recarregue a página.');
     }
-  }, []);
+    return null;
+  };
 
   // Limpar polling ao desmontar
   useEffect(() => {
@@ -198,7 +208,8 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
     setIsProcessingCard(true);
 
     try {
-      if (!mpRef.current) throw new Error('SDK do Mercado Pago não carregado. Recarregue a página.');
+      const mp = getMPInstance();
+      if (!mp) throw new Error(sdkError || 'SDK do Mercado Pago não disponível. Verifique sua conexão e recarregue a página.');
 
       // Extrai mês e ano do campo de validade (MM/YY)
       const [expMonth, expYear] = cardExpiry.split('/');
@@ -211,7 +222,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
       if (!cardDocNumber) throw new Error('Informe seu CPF/CNPJ.');
 
       // Tokenizar o cartão via MercadoPago.js v2
-      const tokenResponse = await mpRef.current.createCardToken({
+      const tokenResponse = await mp.createCardToken({
         cardNumber: rawCardNumber,
         cardholderName: cardName,
         cardExpirationMonth: expMonth,
