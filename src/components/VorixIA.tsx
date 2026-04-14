@@ -93,8 +93,9 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
     setLastMessageTime(now);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
-      const model = ai.models.get({ model: 'gemini-1.5-flash' });
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+      if (!apiKey) throw new Error('VITE_GEMINI_API_KEY não configurada');
+      const ai = new GoogleGenAI({ apiKey });
 
       // ... existing data preparation ...
       const totalBalance: number = accounts.reduce((acc: number, curr: Account) => acc + curr.balance, 0);
@@ -156,14 +157,14 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
       `;
 
       const chat = ai.chats.create({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-3-flash-preview',
         config: {
           systemInstruction: context,
-          maxOutputTokens: isEconomyMode ? 300 : 1000, 
+          maxOutputTokens: isEconomyMode ? 300 : 1000,
         },
       });
 
-      const response = await chat.sendMessage(userMessage);
+      const response = await chat.sendMessage({ message: userMessage });
       
       // Update request count in Firestore
       try {

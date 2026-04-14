@@ -147,7 +147,7 @@ export const RadarView: React.FC<RadarViewProps> = ({ user }) => {
       const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
       const result = await ai.models.generateContent({
-        model:    'gemini-2.0-flash',
+        model:    'gemini-3-flash-preview',
         contents: `Hoje é ${hoje}. Você é analista financeiro sênior do Brasil.
 Gere 3 oportunidades de investimento práticas e atuais para o mercado brasileiro.
 Foque em opções reais: Tesouro Direto, CDB, LCI/LCA, FIIs populares, ações blue chips (VALE3, ITUB4, WEGE3, PETR4).

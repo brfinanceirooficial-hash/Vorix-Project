@@ -10,8 +10,12 @@ export const generateProactiveAlerts = async (
   existingAlerts: Alert[]
 ) => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
-    const model = ai.models.get({ model: "gemini-3-flash-preview" });
+    // Funciona em Vite (browser) e Node.js
+    const apiKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY)
+      || process.env.VITE_GEMINI_API_KEY
+      || process.env.GEMINI_API_KEY
+      || "";
+    const ai = new GoogleGenAI({ apiKey });
 
     const totalBalance = accounts.reduce((acc, curr) => acc + curr.balance, 0);
     const monthlyIncome = transactions
@@ -58,7 +62,7 @@ export const generateProactiveAlerts = async (
     `;
 
     const result = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
