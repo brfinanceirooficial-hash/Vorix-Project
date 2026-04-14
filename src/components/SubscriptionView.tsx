@@ -124,9 +124,9 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
     },
     pro: {
       name: 'Plano Pro',
-      price: '10,99',
+      price: '0,99',
       period: 'por mês',
-      priceNum: 10.99,
+      priceNum: 0.99,
       features: [
         '3 Contas Bancárias',
         'Anotações Ilimitadas',
@@ -139,9 +139,9 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
     },
     premium: {
       name: 'Plano Premium',
-      price: '17,99',
+      price: '0,99',
       period: 'por mês',
-      priceNum: 17.99,
+      priceNum: 0.99,
       features: [
         'Contas Ilimitadas',
         'IA Ilimitada',
