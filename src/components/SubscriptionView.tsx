@@ -972,5 +972,6 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
         </div>
       </div>
     </div>
+    </>
   );
 };
