@@ -41,6 +41,7 @@ async function activatePlan(userId: string, planId: string, mpSubscriptionId?: s
     plan: planId,
     is_paid: true,
     subscription_status: 'active',
+    trial_ends_at: null, // Zerar trial ao assinar
   };
   if (mpSubscriptionId) updateData.mp_subscription_id = mpSubscriptionId;
   if (mpPayerId)        updateData.mp_payer_id = mpPayerId;
@@ -284,6 +285,7 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     const resourceId = data?.id;
 
     if (!resourceId) {
+      console.log('[webhook] Sem resourceId no payload');
       return res.status(200).send('OK');
     }
 
@@ -310,7 +312,10 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
       });
 
       if (status === 'approved' && userId && planId) {
+        console.log(`[webhook] Ativando plano ${planId} para user: ${userId}`);
         await activatePlan(userId, planId, undefined, String(paymentData.payer?.id || ''));
+      } else {
+        console.log(`[webhook] Pagamento não aprovado ou dados incompletos: status=${status}, user=${userId}, plan=${planId}`);
       }
     }
 
@@ -355,6 +360,78 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
   }
 
   return res.status(200).send('OK');
+});
+
+// ============================================================
+// CANCELAMENTO — Assinatura (Mercado Pago)
+// ============================================================
+app.post("/api/checkout/cancel-subscription", async (req, res) => {
+  try {
+    const { userId, reason } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: "UserID não informado" });
+    }
+
+    // 1. Busca o usuário para pegar a subscription_id do Mercado Pago
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('mp_subscription_id, plan')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    const subscriptionId = user.mp_subscription_id;
+
+    // 2. Tenta cancelar no Mercado Pago se houver ID de assinatura
+    if (subscriptionId) {
+      try {
+        const preApproval = new PreApproval(mpClient);
+        await preApproval.update({
+          id: subscriptionId,
+          body: {
+            status: 'cancelled',
+          },
+        });
+        console.log(`[cancel] Assinatura ${subscriptionId} cancelada no MP`);
+      } catch (mpErr: any) {
+        console.error(`[cancel] Erro ao cancelar no MP (id:${subscriptionId}):`, mpErr.message);
+        // Mesmo se falhar no MP (ex: já cancelada), seguimos para limpar no DB
+      }
+    }
+
+    // 3. Atualiza o status do usuário no Supabase
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        is_paid: false,
+        subscription_status: 'expired',
+        plan: 'trial',
+        cancellation_reason: reason || 'Não informado',
+        cancelled_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (updateError) throw updateError;
+
+    // 4. Log do evento de cancelamento
+    await logPaymentEvent({
+      userId,
+      mpSubscriptionId: subscriptionId,
+      eventType: 'subscription_cancelled_by_user',
+      status: 'cancelled',
+      plan: user.plan,
+      rawPayload: { reason },
+    });
+
+    return res.json({ success: true, message: "Assinatura cancelada com sucesso" });
+  } catch (error: any) {
+    console.error("[cancel-subscription] Erro:", error);
+    return res.status(500).json({ error: "Falha ao cancelar assinatura", details: error.message });
+  }
 });
 
 // ============================================================

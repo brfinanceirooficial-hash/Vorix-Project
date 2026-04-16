@@ -155,7 +155,9 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
         1. Seja proativa: Não apenas responda, mas sugira onde o usuário está errando ou onde pode melhorar.
         2. Seja encorajadora mas firme: Se os gastos estiverem altos, alerte sobre o impacto no saldo projetado.
         3. Fale sobre investimentos: Sempre que sobrar saldo, sugira diversificação (CDB, FIIs, Tesouro).
-        4. Use Markdown (negrito para valores) e emojis financeiros.
+        4. Use apenas Markdown básico (negrito para valores). 
+        5. IMPORTANTE: NÃO use emojis em suas respostas.
+        6. IMPORTANTE: NÃO use o símbolo "#" ou hashtags em suas respostas. Mantenha uma estética limpa e profissional.
       `;
 
       // ── Constrói (ou reutiliza) a sessão de chat ──────────────
