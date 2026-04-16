@@ -161,32 +161,31 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
         7. MUITO IMPORTANTE: Entregue respostas completas. Nunca corte seus pensamentos no meio da frase.
       `;
 
-      // ── Constrói (ou reutiliza) a sessão de chat ──────────────
-      // Se já existe uma sessão ativa, reutiliza para manter o histórico
       if (!aiRef.current) {
         aiRef.current = new GoogleGenAI({ apiKey });
       }
 
-      if (!chatRef.current) {
-        // Monta o histórico existente no formato da SDK do Gemini
-        const history = messages
-          .filter(m => m.text) // ignora vazios
-          .map(m => ({
-            role: m.role === 'user' ? 'user' : 'model' as const,
-            parts: [{ text: m.text }],
-          }));
+      const historyContents = messages
+        .filter(m => m.text) // ignora vazios
+        .map(m => ({
+          role: m.role === 'user' ? 'user' : 'model',
+          parts: [{ text: m.text }],
+        }));
 
-        chatRef.current = aiRef.current.chats.create({
-          model: 'gemini-3-flash-preview',
-          config: {
-            systemInstruction: context,
-            maxOutputTokens: isEconomyMode ? 2500 : 5000,
-          },
-          history: history.length > 1 ? history.slice(0, -1) : [],
-        });
-      }
+      historyContents.push({
+        role: 'user',
+        parts: [{ text: userMessage }]
+      });
 
-      const response = await chatRef.current.sendMessage({ message: userMessage });
+      const response = await aiRef.current.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: historyContents,
+        config: {
+          systemInstruction: context,
+          maxOutputTokens: isEconomyMode ? 2500 : 5000,
+          temperature: 0.7,
+        }
+      });
       
       // Update request count in Firestore
       try {
