@@ -861,19 +861,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         className="fixed lg:relative inset-y-0 left-0 w-64 border-r border-zinc-900 flex flex-col p-6 space-y-8 bg-black z-50 backdrop-blur-xl"
       >
         <div className="flex items-center justify-between">
-          <motion.div 
-            variants={{
-              open: { opacity: 1, x: 0 },
-              closed: { opacity: 0, x: -20 },
-              desktop: { opacity: 1, x: 0 }
-            }}
-            className="flex items-center space-x-3"
-          >
+          <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-[#ff4d00] rounded-xl overflow-hidden shadow-lg shadow-[#ff4d00]/20">
               <img src="/favicon.png" alt="Vorix Logo" className="w-full h-full object-cover" />
             </div>
             <span className="text-xl font-bold tracking-tighter text-white">VORIX</span>
-          </motion.div>
+          </div>
           <button 
             onClick={() => setIsSidebarOpen(false)}
             className="lg:hidden p-2 text-zinc-500 hover:text-white"
@@ -897,13 +890,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             { id: 'reports', label: 'Relatórios', icon: Download },
             { id: 'settings', label: 'Configurações', icon: Settings },
           ].map((item) => (
-            <motion.button 
+            <button 
               key={item.id}
-              variants={{
-                open: { opacity: 1, x: 0 },
-                closed: { opacity: 0, x: -20 },
-                desktop: { opacity: 1, x: 0 }
-              }}
               onClick={() => { 
                 if (item.id === 'reports') {
                   setShowExportModal(true);
@@ -929,18 +917,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 </span>
               )}
               {view === item.id && <ChevronRight className="w-4 h-4" />}
-            </motion.button>
+            </button>
           ))}
         </nav>
 
-        <motion.div 
-          variants={{
-            open: { opacity: 1, x: 0 },
-            closed: { opacity: 0, x: -20 },
-            desktop: { opacity: 1, x: 0 }
-          }}
-          className="pt-6 border-t border-zinc-800"
-        >
+        <div className="pt-6 border-t border-zinc-800">
           <button 
             onClick={() => signOut(auth)}
             className="w-full flex items-center space-x-3 px-4 py-3 text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
@@ -948,7 +929,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             <LogOut className="w-5 h-5" />
             <span>Sair</span>
           </button>
-        </motion.div>
+        </div>
       </motion.aside>
 
       {/* Main Content */}
@@ -997,12 +978,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           </div>
 
           <div className="flex items-center justify-between w-full lg:w-auto">
-            <div className="flex items-center space-x-2.5">
+            <div className="flex items-center space-x-3">
               <button 
                 onClick={() => setIsSidebarOpen(true)}
-                className="lg:hidden p-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-all active:scale-95"
+                className="lg:hidden p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-all active:scale-95"
               >
-                <Menu className="w-4 h-4" />
+                <Menu className="w-5 h-5" />
               </button>
               <div className="lg:hidden">
                 <p className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider">Olá,</p>
@@ -1223,72 +1204,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               </motion.div>
             </div>
 
-            {/* Streak Card */}
-            <motion.div 
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-zinc-900/40 border border-zinc-800/50 p-4 lg:p-8 rounded-2xl lg:rounded-3xl space-y-4 lg:space-y-6"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <motion.div 
-                    animate={streakInfo.animate}
-                    transition={{ repeat: Infinity, duration: streakInfo.needsUpdate ? 1 : 3 }}
-                    className={`p-2 lg:p-3 bg-orange-600/10 rounded-xl border border-orange-600/20 ${streakInfo.glowClass}`}
-                  >
-                    <Flame className={`${streakInfo.colorClass} w-5 h-5 lg:w-6 lg:h-6 fill-current`} />
-                  </motion.div>
-                  <div>
-                    <h3 className="text-sm lg:text-xl font-bold">Sua Sequência</h3>
-                    <p className="text-zinc-500 text-[10px] lg:text-xs">
-                      {streakInfo.isUpdatedToday 
-                        ? "Você já manteve sua chama acesa hoje! 🔥" 
-                        : "Bora registrar seus gastos hoje? 👀"}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-2xl lg:text-4xl font-black text-white">{streakInfo.currentStreak}</span>
-                  <span className="text-[10px] lg:text-xs font-bold text-zinc-500 uppercase ml-2">Dias</span>
-                </div>
-              </div>
-
-              {/* Progress to next milestone */}
-              {streakInfo.currentStreak < 7 ? (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] lg:text-xs font-bold uppercase tracking-widest text-zinc-500">
-                    <span>Progresso para 7 dias</span>
-                    <span>{Math.round((streakInfo.currentStreak / 7) * 100)}%</span>
-                  </div>
-                  <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(streakInfo.currentStreak / 7) * 100}%` }}
-                      className="h-full bg-[#ff4d00]"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2 text-orange-500 text-xs font-bold p-3 bg-orange-600/10 border border-orange-600/20 rounded-xl">
-                  <Trophy className="w-4 h-4" />
-                  <span>Você é um Mestre Vorix! Continue batendo recordes.</span>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between pt-4 border-t border-zinc-800/50">
-                <div className="text-center flex-1">
-                  <p className="text-[10px] text-zinc-500 uppercase font-bold">Recorde Atual</p>
-                  <p className="text-sm lg:text-lg font-bold">🏆 {streakInfo.longestStreak} Dias</p>
-                </div>
-                <div className="w-px h-8 bg-zinc-800 mx-4" />
-                <div className="text-center flex-1">
-                  <p className="text-[10px] text-zinc-500 uppercase font-bold">Status</p>
-                  <p className={`text-sm lg:text-lg font-bold ${streakInfo.needsUpdate ? 'text-rose-500' : 'text-emerald-500'}`}>
-                    {streakInfo.needsUpdate ? 'Urgente ⚠️' : streakInfo.isUpdatedToday ? 'Ativo ✅' : 'Pendente ⏳'}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
+            {/* Streak Card Removed */}
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
