@@ -165,7 +165,9 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
         aiRef.current = new GoogleGenAI({ apiKey });
       }
 
-      const historyContents = messages
+      // O histórico da API requere que a 1ª mensagem seja do tipo 'user'.
+      // Como a posição 0 é o modelo dando as boas vindas, nós ignoramos ela com slice(1).
+      const historyContents = messages.slice(1)
         .filter(m => m.text) // ignora vazios
         .map(m => ({
           role: m.role === 'user' ? 'user' : 'model',
