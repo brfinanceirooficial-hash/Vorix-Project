@@ -5,6 +5,7 @@ import PDFDocument from "pdfkit-table";
 import { MercadoPagoConfig, Payment, PreApproval } from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { GoogleGenAI } from '@google/genai';
 
 const app = express();
 
@@ -834,6 +835,90 @@ app.get('/api/radar-news', async (_req, res) => {
   } catch (error: any) {
     console.error('Radar news error:', error);
     return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// WHATSAPP — Notificações e Alertas Criativos via IA
+// ============================================================
+
+async function sendWhatsAppMessage(phone: string, text: string) {
+  // Integre o provedor do WhatsApp desejado aqui (Evolution API, Twilio, Z-API, etc.)
+  const apiUrl = process.env.WHATSAPP_API_URL; 
+  const apiKey = process.env.WHATSAPP_API_KEY; 
+  const instance = process.env.WHATSAPP_INSTANCE || 'vorix';
+
+  if (!apiUrl || !apiKey) {
+    // Modo de mock para teste local ou quando não configurado
+    console.log(`\n=========================================\n📲 [WhatsApp para ${phone}]: \n\n${text}\n=========================================\n(Configure as variáveis WHATSAPP_API_URL e WHATSAPP_API_KEY no .env para envios reais)\n`);
+    return { success: true, mock: true }; 
+  }
+
+  try {
+    // Exemplo de Payload para Evolution API (muito usada no BR)
+    const response = await fetch(`${apiUrl}/message/sendText/${instance}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': apiKey
+      },
+      body: JSON.stringify({
+        number: phone,
+        text: text
+      })
+    });
+    
+    if (!response.ok) {
+      const err = await response.text();
+      console.error(`Erro ao enviar WhatsApp:`, err);
+      return { success: false, error: err };
+    }
+    return { success: true, mock: false };
+  } catch (error: any) {
+    console.error(`Falha no fetch do WhatsApp:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+app.post('/api/whatsapp/notify', async (req, res) => {
+  try {
+    const { phone, username, notificationType, customData } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ error: "Número de WhatsApp obrigatório" });
+    }
+
+    const ai = new GoogleGenAI({ apiKey: process.env.VITE_GEMINI_API_KEY || '' });
+    let prompt = '';
+
+    if (notificationType === 'welcome') {
+      prompt = `Crie uma primeira mensagem de boas-vindas incrivelmente criativa, dinâmica e empolgante para mandar no WhatsApp do usuário chamado "${username}". Você é o Assistente Vorix IA. Use emojis, um tom muito amigável, e dê já uma dica financeira inicial de presente. Tem que parecer uma mensagem real de WhatsApp, formatada com asteriscos para *negrito*. Seja breve mas impactante.`;
+    } else if (notificationType === 'expense_alert') {
+      prompt = `Crie um alerta de WhatsApp criativo e amigável (como um assistente financeiro premium) para "${username}". Baseado em: ${JSON.stringify(customData)}. Mostre que você está de olho na conta e dê um conselho imediato de economia, use emojis.`;
+    } else {
+      prompt = `Escreva uma notificação rápida e criativa de WhatsApp para o usuário "${username}" para o assunto: ${notificationType}.`;
+    }
+
+    const aiResponse = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { maxOutputTokens: 800, temperature: 0.8 }
+    });
+
+    const messageText = aiResponse.text;
+    if (!messageText) throw new Error("IA retornou vazio");
+
+    // Envia efetivamente
+    const result = await sendWhatsAppMessage(phone, messageText);
+    
+    if (!result.success) {
+      return res.status(500).json({ error: "Falha ao enviar mensagem", details: result.error });
+    }
+
+    return res.json({ success: true, mock: result.mock, message: "Notificação despachada!" });
+  } catch (error: any) {
+    console.error("[whatsapp/notify] Erro geral:", error.message);
+    return res.status(500).json({ error: "Erro de processamento da notificação" });
   }
 });
 

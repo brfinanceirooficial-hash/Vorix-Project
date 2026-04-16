@@ -98,6 +98,20 @@ export const generateProactiveAlerts = async (
           read: false,
           createdAt: Timestamp.now(),
         });
+
+        // Dispara o alerta no WhatsApp se configurado
+        if (user.whatsappConnected && user.whatsappNumber) {
+          fetch('/api/whatsapp/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phone: user.whatsappNumber,
+              username: user.username,
+              notificationType: 'expense_alert',
+              customData: alert
+            })
+          }).catch(err => console.warn('Falha ping whatsapp alert:', err));
+        }
       }
     }
   } catch (error) {

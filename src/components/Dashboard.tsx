@@ -305,6 +305,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           photoURL: settingForm.photoURL
         });
 
+        // Detecta se ativou o whatsapp ou trocou número com ele ativo
+        const isWhatsappNewOrChanged = settingForm.whatsappConnected && 
+          (!user.whatsappConnected || settingForm.whatsappNumber !== user.whatsappNumber);
+
         // Update Firestore User Document
         await updateDoc(doc(db, 'users', user.uid), {
           username: settingForm.name,
@@ -314,6 +318,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           whatsappNumber: settingForm.whatsappNumber || null,
           whatsappConnected: settingForm.whatsappConnected,
         });
+
+        // Dispara a mensagem de boas-vindas do whatsapp de forma silenciosa e no background
+        if (isWhatsappNewOrChanged && settingForm.whatsappNumber) {
+          fetch('/api/whatsapp/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phone: settingForm.whatsappNumber,
+              username: settingForm.name,
+              notificationType: 'welcome'
+            })
+          }).catch(e => console.warn('Falha no gatilho do WPP:', e));
+        }
 
         // Update Email if changed
         if (settingForm.email !== user.email) {
