@@ -201,6 +201,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const [settingSuccess, setSettingSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Cancellation States
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelSuccess, setCancelSuccess] = useState<string | null>(null);
+
   const streakInfo = useMemo(() => {
     const s = user.streak || { currentStreak: 0, longestStreak: 0, lastActivityDate: '', streakUpdatedToday: false };
     const today = new Date();
@@ -371,6 +378,40 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       setSettingError('Erro ao salvar notificações: ' + error.message);
     } finally {
       setIsSavingSetting(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!cancelReason.trim()) {
+      setCancelError('Por favor, informe um motivo.');
+      return;
+    }
+
+    setIsCancelling(true);
+    setCancelError(null);
+    setCancelSuccess(null);
+    try {
+      const response = await fetch('/api/checkout/cancel-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.uid,
+          reason: cancelReason,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Erro ao cancelar assinatura');
+
+      setCancelSuccess('Sua assinatura foi cancelada com sucesso.');
+      setSettingSuccess('Assinatura cancelada com sucesso.');
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (err: any) {
+      setCancelError(err.message || 'Erro ao cancelar assinatura. Tente novamente.');
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -1799,6 +1840,92 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                         <Plus className="w-5 h-5 mr-2" />
                         Adicionar Nova Integração
                       </button>
+                    </div>
+                  )}
+
+                  {editingSetting === 'subscription' && (
+                    <div className="space-y-6">
+                      <div className="bg-zinc-800/50 rounded-2xl border border-zinc-800 p-6 flex flex-col items-center text-center space-y-4">
+                        <div className="w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center border border-orange-500/20">
+                          <Star className="w-8 h-8 text-orange-500" />
+                        </div>
+                        <div className="space-y-1">
+                          <h3 className="text-xl font-bold">
+                            {user.subscriptionStatus === 'active' && user.plan && user.plan !== 'trial' ? 'Assinatura Ativa' : 'Plano Atual'}
+                          </h3>
+                          <p className="text-zinc-500 text-sm">
+                            {user.plan === 'premium' ? 'Plano Premium' : (user.plan === 'pro' ? 'Plano Pro' : 'Nenhuma Assinatura Ativa')}
+                          </p>
+                        </div>
+                      </div>
+
+                      {user.subscriptionStatus === 'active' && user.plan && user.plan !== 'trial' && (
+                        <div className="space-y-4">
+                          {!showCancelModal ? (
+                            <button 
+                              onClick={() => setShowCancelModal(true)}
+                              className="w-full py-4 bg-zinc-800 hover:bg-rose-950/30 border border-zinc-800 hover:border-rose-500/50 text-zinc-400 hover:text-rose-500 rounded-2xl font-bold transition-all"
+                            >
+                              Cancelar Assinatura
+                            </button>
+                          ) : (
+                            <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                              <h4 className="font-bold text-rose-500 flex items-center space-x-2">
+                                <AlertCircle className="w-5 h-5" />
+                                <span>Confirmar Cancelamento</span>
+                              </h4>
+                              <p className="text-sm text-rose-400/80 leading-relaxed">
+                                Poxa, que pena que você quer ir... Para podermos melhorar a experiência do Vorix, nos conte por que você está cancelando?
+                              </p>
+                              
+                              <div className="space-y-2">
+                                <textarea
+                                  rows={3}
+                                  placeholder="Ex: Achei o valor alto, faltam recursos específicos, etc..."
+                                  value={cancelReason}
+                                  onChange={(e) => setCancelReason(e.target.value)}
+                                  disabled={isCancelling}
+                                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-white text-sm placeholder:text-zinc-700 focus:outline-none focus:border-rose-500/60 transition-all resize-none"
+                                />
+                              </div>
+
+                              {cancelError && (
+                                <p className="text-rose-400 text-xs font-bold">{cancelError}</p>
+                              )}
+                              {cancelSuccess && (
+                                <p className="text-emerald-500 text-xs font-bold">{cancelSuccess}</p>
+                              )}
+
+                              <div className="grid grid-cols-2 gap-3 pt-2">
+                                <button
+                                  onClick={() => {
+                                    setShowCancelModal(false);
+                                    setCancelReason('');
+                                    setCancelError(null);
+                                  }}
+                                  disabled={isCancelling}
+                                  className="py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-bold text-sm transition-all"
+                                >
+                                  Voltar
+                                </button>
+                                <button
+                                  onClick={handleCancelSubscription}
+                                  disabled={isCancelling || !cancelReason.trim()}
+                                  className="py-3 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center"
+                                >
+                                  {isCancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar Cancelamento'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className="p-4 bg-zinc-800/30 rounded-2xl border border-zinc-800/50">
+                        <p className="text-[10px] text-zinc-500 text-center leading-relaxed">
+                          O acesso premium continuará disponível até o fim do período já pago. Cancelamento feito a qualquer momento sem multa.
+                        </p>
+                      </div>
                     </div>
                   )}
 

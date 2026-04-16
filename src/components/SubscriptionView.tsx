@@ -65,11 +65,6 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
 
-  // Cancellation States
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [cancelReason, setCancelReason] = useState('');
-  const [isCancelling, setIsCancelling] = useState(false);
-  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const mpRef = useRef<any>(null);
   const [sdkError, setSdkError] = useState<string | null>(null);
@@ -287,35 +282,6 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
     setTimeout(() => setPixCopied(false), 2000);
   };
 
-  const handleCancelSubscription = async () => {
-    if (!cancelReason.trim()) {
-      setCancelError('Por favor, informe um motivo.');
-      return;
-    }
-
-    setIsCancelling(true);
-    setCancelError(null);
-    try {
-      const response = await fetch('/api/checkout/cancel-subscription', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.uid,
-          reason: cancelReason,
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Erro ao cancelar assinatura');
-
-      // Sucesso
-      window.location.reload(); // Recarrega para atualizar o estado do usuário
-    } catch (err: any) {
-      setCancelError(err.message || 'Erro ao cancelar assinatura. Tente novamente.');
-    } finally {
-      setIsCancelling(false);
-    }
-  };
 
   const isSubscribed = user.subscriptionStatus === 'active' && user.plan && user.plan !== 'trial';
 
@@ -450,18 +416,10 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
               transition={{ delay: 0.2 }}
               className="bg-zinc-900/50 border border-zinc-800 rounded-[2rem] p-6 space-y-3"
             >
-              <h4 className="text-white font-black text-sm">Precisa de ajuda?</h4>
+              <h4 className="text-white font-black text-sm">Gerenciamento Seguro</h4>
               <p className="text-zinc-500 text-xs leading-relaxed">
-                Deseja pausar ou cancelar sua assinatura? O acesso premium continuará disponível até o fim do período já pago.
+                Sua assinatura é processada de forma segura. O gerenciamento detalhado e cancelamento podem ser realizados na aba Configurações.
               </p>
-              <div className="pt-2">
-                <button
-                  onClick={() => setShowCancelModal(true)}
-                  className="w-full py-3 bg-zinc-950 hover:bg-rose-950/30 border border-zinc-800 hover:border-rose-500/50 text-zinc-500 hover:text-rose-500 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-                >
-                  Cancelar Assinatura
-                </button>
-              </div>
               <div className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl">
                 <p className="text-[10px] text-zinc-600">🔒 Cobranças gerenciadas pelo Mercado Pago · PCI-DSS nível 1</p>
               </div>
@@ -507,98 +465,10 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // MODAL DE CANCELAMENTO
-  // ─────────────────────────────────────────────────────────────────────────────
-  const CancelModal = () => (
-    <AnimatePresence>
-      {showCancelModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-6">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => !isCancelling && setShowCancelModal(false)}
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-8 lg:p-10 shadow-2xl overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 blur-3xl -mr-16 -mt-16 rounded-full" />
-            
-            <div className="relative space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="w-12 h-12 bg-rose-500/10 rounded-2xl flex items-center justify-center text-rose-500">
-                  <AlertCircle className="w-6 h-6" />
-                </div>
-                <button
-                  onClick={() => setShowCancelModal(false)}
-                  disabled={isCancelling}
-                  className="p-2 hover:bg-zinc-800 rounded-xl text-zinc-500 transition-all"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-2xl font-black text-white">Poxa, que pena que você quer ir... 😢</h3>
-                <p className="text-zinc-400 text-sm font-medium leading-relaxed">
-                  Para podermos melhorar a experiência do Vorix, nos conte por que você está cancelando?
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest ml-1">Motivo do Cancelamento</label>
-                  <textarea
-                    rows={4}
-                    placeholder="Ex: Achei o valor alto, faltam recursos específicos, etc..."
-                    value={cancelReason}
-                    onChange={(e) => setCancelReason(e.target.value)}
-                    disabled={isCancelling}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-5 text-white text-sm placeholder:text-zinc-700 focus:outline-none focus:border-rose-500/60 transition-all resize-none"
-                  />
-                </div>
-
-                {cancelError && (
-                  <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-3 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl">
-                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                    <p className="text-rose-400 text-xs font-bold">{cancelError}</p>
-                  </motion.div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                  <button
-                    onClick={() => setShowCancelModal(false)}
-                    disabled={isCancelling}
-                    className="py-4 bg-zinc-800 hover:bg-zinc-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all"
-                  >
-                    Voltar
-                  </button>
-                  <button
-                    onClick={handleCancelSubscription}
-                    disabled={isCancelling || !cancelReason.trim()}
-                    className="py-4 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                  >
-                    {isCancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-
-  // ─────────────────────────────────────────────────────────────────────────────
   // TELA: Não-Assinante (trial ou expirado)
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <>
-      <CancelModal />
       <div className="space-y-8 lg:space-y-12 pb-20">
       {/* Header */}
       <div className="space-y-4">
