@@ -253,33 +253,38 @@ app.get("/api/checkout/pix-status/:paymentId", async (req, res) => {
 // ============================================================
 app.post("/api/mercadopago/webhook", async (req, res) => {
   try {
-    // Validação da assinatura HMAC (segurança)
+    const body = Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString()) : req.body;
+    console.log('🚀 [webhook] Recebido:', JSON.stringify(body, null, 2));
+
+    // Validação da assinatura HMAC (segurança) — Desabilitada se não houver segredo ou em desenvolvimento
+    const isDev = process.env.NODE_ENV === 'development';
     const webhookSecret = process.env.MP_WEBHOOK_SECRET || '';
     const signature     = req.headers['x-signature'] as string;
     const requestId     = req.headers['x-request-id'] as string;
 
-    if (webhookSecret && signature) {
-      const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
-      const bodyStr = rawBody.toString('utf-8');
-      const queryStr = new URLSearchParams(req.query as Record<string, string>).toString();
+    if (webhookSecret && signature && !isDev) {
+      try {
+        const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
+        const bodyStr = rawBody.toString('utf-8');
+        // MP envia: ts=<timestamp>,v1=<hash>
+        const parts = Object.fromEntries(signature.split(',').map(p => p.split('=')));
+        const ts = parts['ts'];
+        const v1 = parts['v1'];
 
-      // MP envia: ts=<timestamp>,v1=<hash>
-      const parts = Object.fromEntries(signature.split(',').map(p => p.split('=')));
-      const ts = parts['ts'];
-      const v1 = parts['v1'];
-
-      if (ts && v1) {
-        const signedData = `id:${(JSON.parse(bodyStr).data?.id || '')};request-id:${requestId || ''};ts:${ts};`;
-        const expectedHash = crypto.createHmac('sha256', webhookSecret).update(signedData).digest('hex');
-        if (expectedHash !== v1) {
-          console.warn('[webhook] Assinatura inválida — ignorando');
-          return res.status(200).send('OK'); // Retorna 200 para não reenviar
+        if (ts && v1) {
+          const signedData = `id:${(body.data?.id || '')};request-id:${requestId || ''};ts:${ts};`;
+          const expectedHash = crypto.createHmac('sha256', webhookSecret).update(signedData).digest('hex');
+          if (expectedHash !== v1) {
+            console.warn('❌ [webhook] Assinatura inválida — ignorando');
+            return res.status(200).send('OK');
+          }
         }
+      } catch (err) {
+        console.error('⚠️ [webhook] Falha ao validar HMAC:', err);
       }
+    } else if (isDev) {
+      console.log('⚠️ [webhook] Pulando validação HMAC (Ambiente de Teste)');
     }
-
-    const body = Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString()) : req.body;
-    console.log('[webhook] Recebido:', JSON.stringify(body, null, 2));
 
     const { type, action, data } = body;
     const resourceId = data?.id;
@@ -295,10 +300,10 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
       const paymentData = await payment.get({ id: Number(resourceId) });
 
       const userId = paymentData.metadata?.user_id || paymentData.external_reference;
-      const planId = paymentData.metadata?.plan_id;
+      const planId = paymentData.metadata?.plan_id || (paymentData.transaction_amount === PLANS.premium.price ? 'premium' : 'pro');
       const status = paymentData.status;
 
-      console.log(`[webhook] Pagamento ${resourceId} | status: ${status} | user: ${userId} | plan: ${planId}`);
+      console.log(`🔍 [webhook] Pagamento ${resourceId} | status: ${status} | user: ${userId} | plan: ${planId}`);
 
       await logPaymentEvent({
         userId,
@@ -311,11 +316,11 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
         rawPayload: paymentData,
       });
 
-      if (status === 'approved' && userId && planId) {
-        console.log(`[webhook] Ativando plano ${planId} para user: ${userId}`);
+      if ((status === 'approved' || status === 'authorized') && userId && planId) {
+        console.log(`✅ [webhook] Ativando plano ${planId} para user: ${userId}`);
         await activatePlan(userId, planId, undefined, String(paymentData.payer?.id || ''));
       } else {
-        console.log(`[webhook] Pagamento não aprovado ou dados incompletos: status=${status}, user=${userId}, plan=${planId}`);
+        console.log(`⚠️ [webhook] Pagamento não aprovado ou dados incompletos: status=${status}, user=${userId}, plan=${planId}`);
       }
     }
 
@@ -454,6 +459,40 @@ app.get("/api/payment-success", async (req, res) => {
   } catch (error) {
     console.error('[payment-success] Erro:', error);
     return res.redirect(`/?status=error&message=VerificationFailed`);
+  }
+});
+
+// ============================================================
+// ATIVAÇÃO MANUAL (Failsafe)
+// ============================================================
+app.post("/api/activate-plan", async (req, res) => {
+  try {
+    const { userId, planId, secret } = req.body;
+
+    // Proteção básica para o endpoint manual
+    const systemSecret = process.env.ADMIN_SECRET || 'vorix-admin-2024';
+    if (secret !== systemSecret) {
+      return res.status(403).json({ error: "Acesso negado" });
+    }
+
+    if (!userId || !planId) {
+      return res.status(400).json({ error: "Dados incompletos" });
+    }
+
+    await activatePlan(userId, planId);
+    
+    await logPaymentEvent({
+      userId,
+      eventType: 'manual_activation',
+      status: 'active',
+      plan: planId,
+      rawPayload: { method: 'manual_api' }
+    });
+
+    return res.json({ success: true, message: `Plano ${planId} ativado para ${userId}` });
+  } catch (error: any) {
+    console.error("[activate-plan] Erro:", error);
+    return res.status(500).json({ error: "Falha ao ativar plano", details: error.message });
   }
 });
 

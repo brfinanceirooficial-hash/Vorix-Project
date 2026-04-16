@@ -99,6 +99,8 @@ const snakeToCamelMap: Record<string, string> = {
   streak_updated_today: 'streakUpdatedToday',
   mp_subscription_id: 'mpSubscriptionId',
   mp_payer_id: 'mpPayerId',
+  reports_count: 'reportsCount',
+  last_report_date: 'lastReportDate',
 };
 
 const camelToSnakeMap: Record<string, string> = Object.fromEntries(
@@ -143,6 +145,7 @@ function isISODate(str: string): boolean {
 const DATE_FIELDS = new Set([
   'created_at', 'updated_at', 'trial_ends_at', 'completed_at',
   'unlocked_at', 'balance_start_date', 'last_balance_check', 'date',
+  'last_report_date',
 ]);
 
 function isDateField(key: string): boolean {
@@ -416,6 +419,7 @@ export const setDoc = async (docPath: string, data: any) => {
       'birth_date', 'phone', 'whatsapp_connected', 'whatsapp_number',
       'current_streak', 'longest_streak', 'last_activity_date', 'streak_updated_today',
       'plan', 'mp_subscription_id', 'mp_payer_id',
+      'reports_count', 'last_report_date',
     ]);
     const filteredData: Record<string, any> = {};
     for (const [k, v] of Object.entries(snakeData)) {
@@ -505,6 +509,7 @@ export const updateDoc = async (docPath: string, data: any) => {
       'birth_date', 'phone', 'whatsapp_connected', 'whatsapp_number',
       'current_streak', 'longest_streak', 'last_activity_date', 'streak_updated_today',
       'plan', 'mp_subscription_id', 'mp_payer_id',
+      'reports_count', 'last_report_date',
     ]);
     finalData = {};
     for (const [k, v] of Object.entries(snakeData)) {

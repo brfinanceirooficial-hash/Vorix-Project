@@ -206,6 +206,13 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
       if (!response.ok || !data.success) throw new Error(data.error || 'Pagamento recusado.');
 
       if (data.status === 'authorized') {
+        // Failsafe: Atualiza o doc localmente caso o webhook demore
+        await updateDoc(doc(db, 'users', user.uid), {
+          plan: selectedPlan,
+          subscriptionStatus: 'active',
+          isPaid: true,
+          trialEndsAt: null
+        });
         setCardSuccess(true);
         setTimeout(() => { window.location.href = `/?status=success&plan=${selectedPlan}`; }, 1500);
       } else {
@@ -251,6 +258,13 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
           const s = await res.json();
           if (s.status === 'approved') {
             clearInterval(pixPollingRef.current);
+            // Failsafe: Atualiza o doc localmente caso o webhook demore
+            await updateDoc(doc(db, 'users', user.uid), {
+              plan: selectedPlan,
+              subscriptionStatus: 'active',
+              isPaid: true,
+              trialEndsAt: null
+            });
             setPixStatus('approved');
             setTimeout(() => { window.location.href = `/?status=success&plan=${selectedPlan}`; }, 2000);
           } else if (s.status === 'cancelled' || s.status === 'rejected') {
@@ -599,7 +613,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
       </div>
 
       {/* Trial Status Bar */}
-      {user.subscriptionStatus === 'trialing' && (
+      {user.plan === 'trial' && (
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
           <div className="flex items-center space-x-4 relative z-10">
             <div className="w-12 h-12 bg-orange-500/20 rounded-2xl flex items-center justify-center text-orange-500">
@@ -607,7 +621,9 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
             </div>
             <div>
               <h3 className="text-white font-bold">Você está no Período de Teste</h3>
-              <p className="text-zinc-500 text-sm">{daysLeft} dias restantes • {user.reportsCount || 0}/2 relatórios usados</p>
+              <p className="text-zinc-500 text-sm">
+                {daysLeft > 0 ? `${daysLeft} dias restantes` : 'Trial expirado'} • {user.reportsCount || 0}/2 relatórios usados
+              </p>
             </div>
           </div>
           <div className="flex-1 max-w-md relative z-10">
