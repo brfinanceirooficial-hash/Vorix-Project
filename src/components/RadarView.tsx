@@ -69,15 +69,45 @@ export const RadarView: React.FC<RadarViewProps> = ({ user }) => {
     setLoadingData(true);
     setDataError(null);
     try {
-      const res  = await fetch('/api/radar-data');
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
+      // Direct Web Fetch from Frontend (Bypasses local Vite Proxy/Vercel API Limits)
+      const awesomeRes = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL,BTC-BRL');
+      const awesomeData = await awesomeRes.json();
+      
+      const usdCard = {
+        bid: Number(awesomeData?.USDBRL?.bid || 0).toFixed(2),
+        pctChange: Number(awesomeData?.USDBRL?.pctChange || 0).toFixed(2),
+        name: 'Dólar Comercial'
+      };
 
-      setMarketData({ usd: data.usd, btc: data.btc, stock: data.stock, updatedAt: data.updatedAt });
-      const ts = data.updatedAt ? new Date(data.updatedAt) : new Date();
-      setLastUpdated(ts);
-      localStorage.setItem('vorix_radar_market', JSON.stringify({ ...data, savedAt: Date.now() }));
-    } catch {
+      const btcCard = {
+        bid: Number(awesomeData?.BTCBRL?.bid || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 }),
+        pctChange: Number(awesomeData?.BTCBRL?.pctChange || 0).toFixed(2),
+        name: 'Bitcoin'
+      };
+
+      // Tenta pegar a ação direto pela Brapi (API GratuitaBR)
+      let stockCard = { bid: '0.00', pctChange: '0.00', name: 'Petrobras PN', symbol: 'PETR4' };
+      try {
+        const brapi = await fetch('https://brapi.dev/api/quote/PETR4');
+        const bData = await brapi.json();
+        if (bData.results && bData.results[0]) {
+           const result = bData.results[0];
+           stockCard = {
+             bid: Number(result.regularMarketPrice).toFixed(2),
+             pctChange: Number(result.regularMarketChangePercent).toFixed(2),
+             name: 'Petrobras PN',
+             symbol: 'PETR4'
+           };
+        }
+      } catch (e) { console.warn("Brapi failed"); }
+
+      const finalData = { usd: usdCard, btc: btcCard, stock: stockCard, updatedAt: new Date().toISOString() };
+      
+      setMarketData(finalData);
+      setLastUpdated(new Date());
+      localStorage.setItem('vorix_radar_market', JSON.stringify({ ...finalData, savedAt: Date.now() }));
+    } catch (err) {
+      console.error('Fetch radar error:', err);
       const cached = localStorage.getItem('vorix_radar_market');
       if (cached) {
         try {
