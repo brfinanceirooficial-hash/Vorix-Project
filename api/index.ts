@@ -641,11 +641,19 @@ app.get('/api/radar-data', async (_req, res) => {
       return res.json({ success: true, cached: true, ...radarCache.data });
     }
 
-    // 1. AwesomeAPI: USD + BTC
-    const awesomeRes = await fetch(
-      `https://economia.awesomeapi.com.br/json/last/USD-BRL,BTC-BRL?t=${now}`
-    );
-    const awesomeData: any = await awesomeRes.json();
+    // 1. AwesomeAPI (USD + BTC) com User-Agent
+    let awesomeData: any = {};
+    try {
+      const awesomeRes = await fetch(
+        `https://economia.awesomeapi.com.br/json/last/USD-BRL,BTC-BRL?t=${now}`,
+        { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } }
+      );
+      if (awesomeRes.ok) {
+        awesomeData = await awesomeRes.json();
+      }
+    } catch (err) {
+      console.warn("Falha ao buscar da AwesomeAPI, usando fallback...", err);
+    }
 
     // 2. Yahoo Finance server-side: PETR4 + IBOV
     const fetchYahoo = async (ticker: string) => {
