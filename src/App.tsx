@@ -124,10 +124,12 @@ export default function App() {
 
   const handleCompleteOnboarding = async () => {
     if (!user) return;
+    console.log('Finalizando onboarding para:', user.uid);
     try {
       await updateDoc(doc(db, 'users', user.uid), {
         onboardingCompleted: true
       });
+      console.log('Onboarding marcado como true no Firestore');
     } catch (error) {
       console.error('Erro ao completar onboarding:', error);
     }
@@ -184,7 +186,7 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {user && user.onboardingCompleted !== true && (
+        {user && user.onboardingCompleted === false && (
           <OnboardingModal 
             user={user} 
             onComplete={handleCompleteOnboarding} 

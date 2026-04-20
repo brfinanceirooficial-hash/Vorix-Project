@@ -23,13 +23,16 @@ interface OnboardingModalProps {
 
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({ user, onComplete }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isVisible, setIsVisible] = useState(true);
+
+  if (!isVisible) return null;
 
   const slides = [
     {
       title: `Bem-vindo à Vorix, ${user.username.split(' ')[0]}!`,
       description: "Estamos felizes em ter você conosco. Vamos te mostrar rapidamente como dominar suas finanças e alcançar a liberdade financeira.",
       icon: <Sparkles className="w-16 h-16 text-orange-500" />,
-      image: "https://images.unsplash.com/photo-1551288049-bbbda536339a?auto=format&fit=crop&q=80&w=800",
+      image: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=800",
       color: "from-orange-500/20 to-orange-500/5"
     },
     {
@@ -77,11 +80,16 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ user, onComple
     }
   ];
 
+  const handleClose = () => {
+    setIsVisible(false);
+    onComplete();
+  };
+
   const nextSlide = () => {
     if (currentSlide < slides.length - 1) {
       setCurrentSlide(currentSlide + 1);
     } else {
-      onComplete();
+      handleClose();
     }
   };
 
@@ -155,8 +163,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ user, onComple
                 ))}
               </div>
               <button 
-                onClick={onComplete}
-                className="p-2 text-zinc-500 hover:text-white transition-colors"
+                onClick={handleClose}
+                className="p-2 text-zinc-500 hover:text-white transition-colors relative z-[210]"
               >
                 <X className="w-6 h-6" />
               </button>
