@@ -73,6 +73,7 @@ export default function App() {
             }
 
             setUser(userData);
+            console.log('User data updated:', userData.uid, 'Onboarding:', userData.onboardingCompleted);
             
             // Verificação de streak: Apenas uma vez por sessão de componente
             if (userData.uid && !hasCheckedStreak) {
@@ -183,7 +184,7 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {user && user.onboardingCompleted === false && (
+        {user && user.onboardingCompleted !== true && (
           <OnboardingModal 
             user={user} 
             onComplete={handleCompleteOnboarding} 

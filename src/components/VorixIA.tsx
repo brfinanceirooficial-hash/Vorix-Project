@@ -64,7 +64,7 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
     // Simple rate limiting: 1 message every 5 seconds
     const now = Date.now();
     if (now - lastMessageTime < 5000 && !overrideInput) {
-      setError('Por favor, aguarde alguns segundos entre as mensagens para economizar recursos.');
+      setError('Calma aí! Estou processando muitas informações. Aguarde uns 5 segundos antes da próxima pergunta?');
       setTimeout(() => setError(null), 3000);
       return;
     }
@@ -81,10 +81,10 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
     
     if (currentCount >= maxQueries) {
       if (user.plan === 'premium') {
-        setError(`Limite de segurança atingido (${maxQueries} consultas/dia) para preservar a estabilidade da IA.`);
+        setError(`Opa! Você atingiu o limite de segurança de ${maxQueries} consultas diárias. Isso serve para manter minha estabilidade. Que tal continuarmos amanhã?`);
       } else {
         const planName = user.plan === 'pro' ? 'Pro' : 'Grátis';
-        setError(`Sua cota diária do plano ${planName} (${maxQueries} consultas) foi atingida. Faça o upgrade para mais!`);
+        setError(`Você atingiu sua cota diária do plano ${planName} (${maxQueries} consultas). Faça um upgrade para continuarmos conversando sem limites!`);
       }
       setTimeout(() => setError(null), 5000);
       return;
@@ -206,7 +206,7 @@ export const VorixIA: React.FC<VorixIAProps & { fullView?: boolean }> = ({ user,
       updateMissionProgress(user.uid, 'IA Expert');
     } catch (error) {
       console.error('Gemini error:', error);
-      setMessages(prev => [...prev, { role: 'model', text: 'Ocorreu um erro ao falar com a IA. Tente novamente mais tarde.' }]);
+      setMessages(prev => [...prev, { role: 'model', text: 'Sinto muito! Meus circuitos estão um pouco congestionados agora devido ao alto volume de acessos. Poderia aguardar uns 30 segundos e tentar me enviar essa mensagem novamente?' }]);
     } finally {
       setLoading(false);
     }
