@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { auth, db, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, onSnapshot } from './lib/storage';
 import { Auth } from './components/Auth';
 import { Dashboard } from './components/Dashboard';
+import { PremiumWelcomeModal } from './components/PremiumWelcomeModal';
+import { OnboardingModal } from './components/OnboardingModal';
 import { User } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dessert, Loader2 } from 'lucide-react';
@@ -10,6 +12,10 @@ import confetti from 'canvas-confetti';
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [welcomeModal, setWelcomeModal] = useState<{ isOpen: boolean; plan: 'pro' | 'premium' }>({
+    isOpen: false,
+    plan: 'pro'
+  });
 
   useEffect(() => {
     let unsubscribeUser: (() => void) | null = null;
@@ -34,6 +40,7 @@ export default function App() {
             subscriptionStatus: 'trialing',
             aiRequestsCount: 0,
             lastAiRequestDate: new Date().toISOString().split('T')[0],
+            onboardingCompleted: false,
           };
           await setDoc(userDocRef, newUser);
         }
@@ -104,11 +111,26 @@ export default function App() {
         origin: { y: 0.6 },
         colors: ['#ff4d00', '#ffffff', '#000000']
       });
+
+      if (plan === 'pro' || plan === 'premium') {
+        setWelcomeModal({ isOpen: true, plan: plan as 'pro' | 'premium' });
+      }
       
       // Limpar a URL para não disparar de novo no refresh
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
+
+  const handleCompleteOnboarding = async () => {
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        onboardingCompleted: true
+      });
+    } catch (error) {
+      console.error('Erro ao completar onboarding:', error);
+    }
+  };
 
   if (loading) {
     return (
@@ -142,8 +164,30 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <Dashboard user={user} />
+            <Dashboard 
+              user={user} 
+              onSubscriptionSuccess={(plan) => setWelcomeModal({ isOpen: true, plan })}
+            />
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {welcomeModal.isOpen && user && (
+          <PremiumWelcomeModal 
+            user={user} 
+            plan={welcomeModal.plan} 
+            onClose={() => setWelcomeModal({ ...welcomeModal, isOpen: false })} 
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {user && user.onboardingCompleted === false && (
+          <OnboardingModal 
+            user={user} 
+            onComplete={handleCompleteOnboarding} 
+          />
         )}
       </AnimatePresence>
     </div>

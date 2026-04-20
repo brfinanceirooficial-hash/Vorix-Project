@@ -64,9 +64,10 @@ import { updateStreakOnActivity } from '../services/streakService';
 import { generatePDFReport } from '../utils/pdfGenerator';
 interface DashboardProps {
   user: User;
+  onSubscriptionSuccess?: (plan: 'pro' | 'premium') => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSuccess }) => {
   const [view, setView] = useState<'dashboard' | 'transactions' | 'accounts' | 'ia' | 'alerts' | 'radar' | 'missions' | 'goals' | 'notes' | 'settings' | 'subscription'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -1464,7 +1465,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         )}
 
         {view === 'subscription' && (
-          <SubscriptionView user={user} />
+          <SubscriptionView user={user} onSuccess={onSubscriptionSuccess} />
         )}
 
         {view === 'alerts' && (

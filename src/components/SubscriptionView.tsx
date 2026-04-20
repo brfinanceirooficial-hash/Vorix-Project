@@ -31,6 +31,7 @@ declare global {
 
 interface SubscriptionViewProps {
   user: User;
+  onSuccess?: (plan: 'pro' | 'premium') => void;
 }
 
 const formatCard = (v: string) => v.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
@@ -39,7 +40,7 @@ const formatExpiry = (v: string) => {
   return d.length >= 3 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
 };
 
-export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
+export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user, onSuccess }) => {
   const [selectedPlan, setSelectedPlan] = useState<'pro' | 'premium'>('pro');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'pix'>('card');
 
@@ -209,7 +210,11 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
           trialEndsAt: null
         });
         setCardSuccess(true);
-        setTimeout(() => { window.location.href = `/?status=success&plan=${selectedPlan}`; }, 1500);
+        if (onSuccess) {
+          onSuccess(selectedPlan);
+        } else {
+          setTimeout(() => { window.location.href = `/?status=success&plan=${selectedPlan}`; }, 1500);
+        }
       } else {
         setCardError(`Pagamento em análise (${data.status}). Aguarde a confirmação.`);
       }
@@ -261,7 +266,11 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user }) => {
               trialEndsAt: null
             });
             setPixStatus('approved');
-            setTimeout(() => { window.location.href = `/?status=success&plan=${selectedPlan}`; }, 2000);
+            if (onSuccess) {
+              onSuccess(selectedPlan);
+            } else {
+              setTimeout(() => { window.location.href = `/?status=success&plan=${selectedPlan}`; }, 2000);
+            }
           } else if (s.status === 'cancelled' || s.status === 'rejected') {
             clearInterval(pixPollingRef.current);
             setPixStatus('error');

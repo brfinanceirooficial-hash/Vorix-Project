@@ -32,6 +32,7 @@ export interface User {
   whatsappConnected?: boolean;
   whatsappNumber?: string;
   streak?: Streak;
+  onboardingCompleted?: boolean;
 }
 
 export interface Account {
