@@ -16,8 +16,26 @@
   <meta name="twitter:card" content="summary_large_image" />
 
   <title>VORIX GESTÃO FINANCEIRA</title>
+  
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Vorix" />
+  
   <!-- MercadoPago.js v2 — SDK oficial para tokenização de cartão -->
   <script src="https://sdk.mercadopago.com/js/v2"></script>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('SW registrado!', reg))
+          .catch(err => console.log('SW erro:', err));
+      });
+    }
+  </script>
 </head>
 
 <body>

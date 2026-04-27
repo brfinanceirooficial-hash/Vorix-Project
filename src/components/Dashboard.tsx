@@ -73,6 +73,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
   const [isMobile, setIsMobile] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+      if (isIos) {
+        alert("No iPhone: Toque no ícone de Compartilhar e selecione 'Adicionar à Tela de Início'.");
+      } else {
+        alert("O app já está instalado ou seu navegador não suporta a instalação direta. Verifique o menu do seu navegador.");
+      }
+    }
+  };
 
   // Transaction Filtering and Sorting State
   const [transactionSearch, setTransactionSearch] = useState('');
@@ -1537,10 +1564,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
                         { id: 'notifications', label: 'Notificações', desc: 'Alertas push e e-mails', icon: Bell },
                         { id: 'whatsapp', label: 'WhatsApp', desc: 'Alertas de gastos e dicas financeiras', icon: MessageCircle },
                         { id: 'integrations', label: 'Integrações', desc: 'Conectar novos bancos e serviços', icon: LinkIcon },
-                      ].map((item) => (
+                        { id: 'install', label: 'Instalar App', desc: 'Adicionar o Vorix à sua tela inicial', icon: Download, action: handleInstallClick },
+                      ].map((item: any) => (
                         <button 
                           key={item.id} 
-                          onClick={() => setEditingSetting(item.id as any)}
+                          onClick={() => item.action ? item.action() : setEditingSetting(item.id as any)}
                           className="w-full flex items-center justify-between p-6 hover:bg-zinc-800/50 transition-all"
                         >
                           <div className="flex items-center space-x-4">

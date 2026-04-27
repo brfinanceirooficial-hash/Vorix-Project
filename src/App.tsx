@@ -4,6 +4,7 @@ import { Auth } from './components/Auth';
 import { Dashboard } from './components/Dashboard';
 import { PremiumWelcomeModal } from './components/PremiumWelcomeModal';
 import { OnboardingModal } from './components/OnboardingModal';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { User } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dessert, Loader2 } from 'lucide-react';
@@ -193,6 +194,7 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+      <PWAInstallPrompt />
     </div>
   );
 }
