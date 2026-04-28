@@ -50,6 +50,7 @@ import {
 import { formatCurrency } from '../lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { VorixIA } from './VorixIA';
+import { InstallGuideModal } from './InstallGuideModal';
 import { AlertsView } from './AlertsView';
 import { RadarView } from './RadarView';
 import { GoalsView } from './GoalsView';
@@ -74,6 +75,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -85,20 +87,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
   }, []);
 
   const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-      }
-    } else {
-      const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
-      if (isIos) {
-        alert("No iPhone: Toque no ícone de Compartilhar e selecione 'Adicionar à Tela de Início'.");
-      } else {
-        alert("O app já está instalado ou seu navegador não suporta a instalação direta. Verifique o menu do seu navegador.");
-      }
-    }
+    setShowInstallGuide(true);
   };
 
   // Transaction Filtering and Sorting State
@@ -2993,6 +2982,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
           />
         )}
       </AnimatePresence>
+
+      <InstallGuideModal 
+        isOpen={showInstallGuide} 
+        onClose={() => setShowInstallGuide(false)} 
+      />
     </div>
   );
 };
