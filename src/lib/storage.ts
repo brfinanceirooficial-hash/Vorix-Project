@@ -101,6 +101,7 @@ const snakeToCamelMap: Record<string, string> = {
   mp_payer_id: 'mpPayerId',
   reports_count: 'reportsCount',
   last_report_date: 'lastReportDate',
+  payment_method: 'paymentMethod',
 };
 
 const camelToSnakeMap: Record<string, string> = Object.fromEntries(
