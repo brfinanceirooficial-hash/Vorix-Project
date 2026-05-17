@@ -51,45 +51,65 @@ export const generatePDFReport = (payload: any) => {
   // Summary Cards (using texts)
   const cardY = 80;
   
-  // Card 1
-  doc.setDrawColor(...VORIX_BLACK);
-  doc.rect(15, cardY, 55, 20);
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("SALDO TOTAL ATUAL", 20, cardY + 7);
-  doc.setFontSize(11);
-  doc.text(payload.totalBalance || "R$ 0,00", 20, cardY + 14);
+  if (payload.exportType === 'receitas') {
+    doc.setDrawColor(...VORIX_BLACK);
+    doc.rect(15, cardY, 180, 20);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.text("ENTRADAS NO PERÍODO", 20, cardY + 7);
+    doc.setTextColor(...VORIX_ORANGE);
+    doc.setFontSize(14);
+    doc.text(payload.periodIncome || "R$ 0,00", 20, cardY + 15);
+  } else if (payload.exportType === 'despesas') {
+    doc.setDrawColor(...VORIX_BLACK);
+    doc.rect(15, cardY, 180, 20);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.text("SAÍDAS NO PERÍODO", 20, cardY + 7);
+    doc.setTextColor(...VORIX_BLACK);
+    doc.setFontSize(14);
+    doc.text(payload.periodExpenses || "R$ 0,00", 20, cardY + 15);
+  } else {
+    // Card 1
+    doc.setDrawColor(...VORIX_BLACK);
+    doc.rect(15, cardY, 55, 20);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.text("SALDO TOTAL ATUAL", 20, cardY + 7);
+    doc.setFontSize(11);
+    doc.text(payload.totalBalance || "R$ 0,00", 20, cardY + 14);
 
-  // Card 2
-  doc.rect(75, cardY, 55, 20);
-  doc.setFontSize(7);
-  doc.text("ENTRADAS NO PERÍODO", 80, cardY + 7);
-  doc.setTextColor(...VORIX_ORANGE);
-  doc.setFontSize(11);
-  doc.text(payload.periodIncome || "R$ 0,00", 80, cardY + 14);
+    // Card 2
+    doc.rect(75, cardY, 55, 20);
+    doc.setFontSize(7);
+    doc.text("ENTRADAS NO PERÍODO", 80, cardY + 7);
+    doc.setTextColor(...VORIX_ORANGE);
+    doc.setFontSize(11);
+    doc.text(payload.periodIncome || "R$ 0,00", 80, cardY + 14);
 
-  // Card 3
-  doc.setTextColor(...VORIX_BLACK);
-  doc.rect(135, cardY, 60, 20);
-  doc.setFontSize(7);
-  doc.text("SAÍDAS NO PERÍODO", 140, cardY + 7);
-  doc.setFontSize(11);
-  doc.text(payload.periodExpenses || "R$ 0,00", 140, cardY + 14);
+    // Card 3
+    doc.setTextColor(...VORIX_BLACK);
+    doc.rect(135, cardY, 60, 20);
+    doc.setFontSize(7);
+    doc.text("SAÍDAS NO PERÍODO", 140, cardY + 7);
+    doc.setFontSize(11);
+    doc.text(payload.periodExpenses || "R$ 0,00", 140, cardY + 14);
 
-  // Net Result Banner
-  const bannerY = 110;
-  doc.setFillColor(...VORIX_BLACK);
-  doc.rect(15, bannerY, 180, 15, "F");
-  
-  doc.setTextColor(...VORIX_WHITE);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.text("RESULTADO LÍQUIDO DO PERÍODO:", 25, bannerY + 10);
-  
-  doc.setTextColor(...VORIX_ORANGE);
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text(payload.netChange || "R$ 0,00", 100, bannerY + 10);
+    // Net Result Banner
+    const bannerY = 110;
+    doc.setFillColor(...VORIX_BLACK);
+    doc.rect(15, bannerY, 180, 15, "F");
+    
+    doc.setTextColor(...VORIX_WHITE);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text("RESULTADO LÍQUIDO DO PERÍODO:", 25, bannerY + 10);
+    
+    doc.setTextColor(...VORIX_ORANGE);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text(payload.netChange || "R$ 0,00", 100, bannerY + 10);
+  }
 
   // Transactions Table
   if (payload.transactions && payload.transactions.length > 0) {
@@ -103,7 +123,7 @@ export const generatePDFReport = (payload: any) => {
     ]);
 
     autoTable(doc, {
-      startY: 135,
+      startY: payload.exportType && payload.exportType !== 'geral' ? 110 : 135,
       head: [["DATA", "DESCRIÇÃO", "CONTA", "CATEGORIA", "TIPO", "VALOR"]],
       body: tableData,
       theme: "plain",

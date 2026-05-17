@@ -777,6 +777,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
       const netChange = periodIncome - periodExpenses;
 
       const payload = {
+        exportType,
         reportTitle: exportType === 'geral' ? 'RELATÓRIO DE MOVIMENTAÇÕES' : exportType === 'receitas' ? 'RELATÓRIO DE RECEITAS' : 'RELATÓRIO DE DESPESAS',
         user: { username: user.username },
         transactions: filteredTransactions.map(t => {

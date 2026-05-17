@@ -625,24 +625,37 @@ app.post("/api/export-pdf", async (req, res) => {
     const cardWidth = (contentWidth - 20) / 3;
     const cardHeight = 65;
     const cardSpacing = 10;
+    const exportType = req.body.exportType || 'geral';
 
-    doc.rect(40, summaryY, cardWidth, cardHeight).stroke(VORIX_BLACK);
-    doc.fillColor(VORIX_BLACK).fontSize(7).font("Helvetica-Bold").text("SALDO TOTAL ATUAL", 50, summaryY + 15);
-    doc.fillColor(VORIX_BLACK).fontSize(14).font("Helvetica-Bold").text(totalBalance || "R$ 0,00", 50, summaryY + 35);
+    if (exportType === 'receitas') {
+      doc.rect(40, summaryY, contentWidth, cardHeight).stroke(VORIX_BLACK);
+      doc.fillColor(VORIX_BLACK).fontSize(7).font("Helvetica-Bold").text("ENTRADAS NO PERÍODO", 50, summaryY + 15);
+      doc.fillColor(VORIX_ORANGE).fontSize(14).font("Helvetica-Bold").text(periodIncome || "R$ 0,00", 50, summaryY + 35);
+      doc.moveDown(5);
+    } else if (exportType === 'despesas') {
+      doc.rect(40, summaryY, contentWidth, cardHeight).stroke(VORIX_BLACK);
+      doc.fillColor(VORIX_BLACK).fontSize(7).font("Helvetica-Bold").text("SAÍDAS NO PERÍODO", 50, summaryY + 15);
+      doc.fillColor(VORIX_BLACK).fontSize(14).font("Helvetica-Bold").text(periodExpenses || "R$ 0,00", 50, summaryY + 35);
+      doc.moveDown(5);
+    } else {
+      doc.rect(40, summaryY, cardWidth, cardHeight).stroke(VORIX_BLACK);
+      doc.fillColor(VORIX_BLACK).fontSize(7).font("Helvetica-Bold").text("SALDO TOTAL ATUAL", 50, summaryY + 15);
+      doc.fillColor(VORIX_BLACK).fontSize(14).font("Helvetica-Bold").text(totalBalance || "R$ 0,00", 50, summaryY + 35);
 
-    doc.rect(40 + cardWidth + cardSpacing, summaryY, cardWidth, cardHeight).stroke(VORIX_BLACK);
-    doc.fillColor(VORIX_BLACK).fontSize(7).font("Helvetica-Bold").text("ENTRADAS NO PERÍODO", 40 + cardWidth + cardSpacing + 10, summaryY + 15);
-    doc.fillColor(VORIX_ORANGE).fontSize(14).font("Helvetica-Bold").text(periodIncome || "R$ 0,00", 40 + cardWidth + cardSpacing + 10, summaryY + 35);
+      doc.rect(40 + cardWidth + cardSpacing, summaryY, cardWidth, cardHeight).stroke(VORIX_BLACK);
+      doc.fillColor(VORIX_BLACK).fontSize(7).font("Helvetica-Bold").text("ENTRADAS NO PERÍODO", 40 + cardWidth + cardSpacing + 10, summaryY + 15);
+      doc.fillColor(VORIX_ORANGE).fontSize(14).font("Helvetica-Bold").text(periodIncome || "R$ 0,00", 40 + cardWidth + cardSpacing + 10, summaryY + 35);
 
-    doc.rect(40 + (cardWidth + cardSpacing) * 2, summaryY, cardWidth, cardHeight).stroke(VORIX_BLACK);
-    doc.fillColor(VORIX_BLACK).fontSize(7).font("Helvetica-Bold").text("SAÍDAS NO PERÍODO", 40 + (cardWidth + cardSpacing) * 2 + 10, summaryY + 15);
-    doc.fillColor(VORIX_BLACK).fontSize(14).font("Helvetica-Bold").text(periodExpenses || "R$ 0,00", 40 + (cardWidth + cardSpacing) * 2 + 10, summaryY + 35);
+      doc.rect(40 + (cardWidth + cardSpacing) * 2, summaryY, cardWidth, cardHeight).stroke(VORIX_BLACK);
+      doc.fillColor(VORIX_BLACK).fontSize(7).font("Helvetica-Bold").text("SAÍDAS NO PERÍODO", 40 + (cardWidth + cardSpacing) * 2 + 10, summaryY + 15);
+      doc.fillColor(VORIX_BLACK).fontSize(14).font("Helvetica-Bold").text(periodExpenses || "R$ 0,00", 40 + (cardWidth + cardSpacing) * 2 + 10, summaryY + 35);
 
-    const bannerY = 310;
-    doc.rect(40, bannerY, contentWidth, 40).fill(VORIX_BLACK);
-    doc.fillColor(VORIX_WHITE).fontSize(9).font("Helvetica").text("RESULTADO LÍQUIDO DO PERÍODO:", 60, bannerY + 15);
-    doc.fillColor(VORIX_ORANGE).fontSize(12).font("Helvetica-Bold").text(netChange || "R$ 0,00", 230, bannerY + 14);
-    doc.moveDown(5);
+      const bannerY = 310;
+      doc.rect(40, bannerY, contentWidth, 40).fill(VORIX_BLACK);
+      doc.fillColor(VORIX_WHITE).fontSize(9).font("Helvetica").text("RESULTADO LÍQUIDO DO PERÍODO:", 60, bannerY + 15);
+      doc.fillColor(VORIX_ORANGE).fontSize(12).font("Helvetica-Bold").text(netChange || "R$ 0,00", 230, bannerY + 14);
+      doc.moveDown(5);
+    }
 
     if (transactions && transactions.length > 0) {
       const table = {
