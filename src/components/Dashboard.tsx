@@ -609,15 +609,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
     e.preventDefault();
     if (!user || !amount || !description || !accountId) return;
 
-    const cleanAmount = amount.replace(/\./g, '').replace(',', '.');
+    // Remove anything that isn't a digit or comma, then replace comma with dot
+    const cleanAmount = amount.replace(/[^\d,]/g, '').replace(',', '.');
     const numAmount = parseFloat(cleanAmount);
-    if (isNaN(numAmount) || numAmount <= 0) return;
+    if (isNaN(numAmount) || numAmount <= 0) {
+      alert("Valor inválido. Por favor, verifique.");
+      return;
+    }
 
     setIsSubmitting(true);
     
     try {
-      // 1. Salva a transação no Firestore
-      await addDoc(collection(db, `users/${user.uid}/transactions`), {
+      // Parse data safely (aceitando YYYY-MM-DD ou fallback)
+      let isoDateStr = date;
+      if (date.includes('/')) {
+        const parts = date.split('/');
+        if (parts.length === 3) {
+          isoDateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+      }
+      
+      let finalDate = new Date(isoDateStr + 'T00:00:00');
+      if (isNaN(finalDate.getTime())) {
+        finalDate = new Date();
+      }
+
+      const txData: any = {
         userId: user.uid,
         accountId,
         amount: numAmount,
@@ -625,12 +642,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
         category,
         description,
         ...(transactionType === 'expense' && { paymentMethod }),
-        date: Timestamp.fromDate(new Date(date + 'T00:00:00'))
-      });
+        date: Timestamp.fromDate(finalDate)
+      };
 
-      // 1.5. Atualiza o Streak do usuário
+      // 1. Salva a transação no Firestore (com fallback para missing column payment_method)
+      try {
+        await addDoc(collection(db, `users/${user.uid}/transactions`), txData);
+      } catch (err: any) {
+        if (err?.message?.includes('payment_method') || err?.message?.includes('column')) {
+          delete txData.paymentMethod;
+          await addDoc(collection(db, `users/${user.uid}/transactions`), txData);
+        } else {
+          throw err;
+        }
+      }
+
+      // 1.5. Atualiza o Streak do usuário (com block seguro)
       if (user?.uid) {
-        await updateStreakOnActivity(user.uid, user.streak);
+        try {
+          await updateStreakOnActivity(user.uid, user.streak);
+        } catch (streakErr) {
+          console.warn("Aviso ao atualizar streak:", streakErr);
+        }
       }
 
       // 2. Atualiza o saldo da conta bancária correspondente
@@ -652,7 +685,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
       setDescription('');
       setAccountId('');
       setDate(new Date().toISOString().split('T')[0]);
-    } catch (error) {
+    } catch (error: any) {
+      alert("Erro ao salvar transação: " + (error.message || "Erro desconhecido. Tente novamente."));
       handleStorageError(error, OperationType.CREATE, `users/${user.uid}/transactions`);
     } finally {
       setIsSubmitting(false);
