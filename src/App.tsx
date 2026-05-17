@@ -20,6 +20,11 @@ export default function App() {
 
   useEffect(() => {
     let unsubscribeUser: (() => void) | null = null;
+    
+    // Safety timeout: force stop loading after 8 seconds
+    const safetyTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 8000);
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (authUser) => {
       if (authUser) {
@@ -56,8 +61,8 @@ export default function App() {
               userData.uid = (userData as any).id || docSnap.id;
             }
 
-            // Migration: Set trial for existing users who don't have it
-            if (!userData.trialEndsAt) {
+            // Migration: Set trial for existing users who don't have it and are not active
+            if (!userData.trialEndsAt && userData.subscriptionStatus !== 'active') {
               const createdAtMs = userData.createdAt instanceof Date
                 ? userData.createdAt.getTime()
                 : (userData.createdAt as any)?.seconds
@@ -68,9 +73,32 @@ export default function App() {
 
               await updateDoc(userDocRef, {
                 trialEndsAt: trialEndsAt,
-                subscriptionStatus: userData.isPaid ? 'active' : 'trialing'
+                subscriptionStatus: 'trialing'
               });
               return; // onSnapshot will trigger again
+            }
+
+            // Check for expiration (Trial or PIX payment)
+            if (userData.trialEndsAt && (userData.subscriptionStatus === 'trialing' || userData.subscriptionStatus === 'active')) {
+              let endsAtMs = 0;
+              if (userData.trialEndsAt instanceof Date) {
+                endsAtMs = userData.trialEndsAt.getTime();
+              } else if (typeof userData.trialEndsAt?.toDate === 'function') {
+                endsAtMs = userData.trialEndsAt.toDate().getTime();
+              } else if (userData.trialEndsAt?.seconds) {
+                endsAtMs = userData.trialEndsAt.seconds * 1000;
+              } else if (typeof userData.trialEndsAt === 'string') {
+                endsAtMs = new Date(userData.trialEndsAt).getTime();
+              }
+
+              if (endsAtMs > 0 && Date.now() > endsAtMs) {
+                await updateDoc(userDocRef, {
+                  subscriptionStatus: 'expired',
+                  plan: 'trial',
+                  isPaid: false
+                });
+                return; // wait for next snapshot
+              }
             }
 
             setUser(userData);
@@ -85,11 +113,17 @@ export default function App() {
               checkUserInactivity(userData);
             }
           }
+          clearTimeout(safetyTimeout);
+          setLoading(false);
+        }, (err) => {
+          console.error('Snapshot error:', err);
+          clearTimeout(safetyTimeout);
           setLoading(false);
         });
       } else {
         if (unsubscribeUser) unsubscribeUser();
         setUser(null);
+        clearTimeout(safetyTimeout);
         setLoading(false);
       }
     });
@@ -97,6 +131,7 @@ export default function App() {
     return () => {
       unsubscribeAuth();
       if (unsubscribeUser) unsubscribeUser();
+      clearTimeout(safetyTimeout);
     };
   }, []);
 

@@ -170,6 +170,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Alimentação');
   const [transactionType, setTransactionType] = useState<'income' | 'expense'>('expense');
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'dinheiro' | 'credito' | 'debito'>('pix');
   const [accountId, setAccountId] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -193,6 +194,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportStartDate, setExportStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
   const [exportEndDate, setExportEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [exportType, setExportType] = useState<'geral' | 'receitas' | 'despesas'>('geral');
   const [isExporting, setIsExporting] = useState(false);
   const [editingSetting, setEditingSetting] = useState<'profile' | 'security' | 'notifications' | 'integrations' | 'whatsapp' | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -272,6 +274,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
     const diff = end.getTime() - now.getTime();
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   }, [user.trialEndsAt]);
+
+  const [showExpirationWarning, setShowExpirationWarning] = useState(false);
+  const [expirationWarningDays, setExpirationWarningDays] = useState(0);
+
+  useEffect(() => {
+    if (!user.trialEndsAt) return;
+    if (user.subscriptionStatus !== 'active' && user.subscriptionStatus !== 'trialing') return;
+    
+    // For active users with mpSubscriptionId (recurring), we don't warn because they auto-renew.
+    if (user.subscriptionStatus === 'active' && user.mpSubscriptionId) return;
+
+    if (daysLeft === 2 || daysLeft === 1) {
+      const storageKey = `warned_expiration_${user.uid}_${daysLeft}`;
+      if (!localStorage.getItem(storageKey)) {
+        setExpirationWarningDays(daysLeft);
+        setShowExpirationWarning(true);
+        localStorage.setItem(storageKey, 'true');
+      }
+    }
+  }, [daysLeft, user.uid, user.trialEndsAt, user.subscriptionStatus, user.mpSubscriptionId]);
 
   // Reset transaction form when modal opens
   useEffect(() => {
@@ -585,6 +607,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
         type: transactionType,
         category,
         description,
+        ...(transactionType === 'expense' && { paymentMethod }),
         date: Timestamp.fromDate(new Date(date + 'T00:00:00'))
       });
 
@@ -730,12 +753,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
       const start = new Date(`${exportStartDate}T00:00:00`);
       const end = new Date(`${exportEndDate}T23:59:59.999`);
 
-      const filteredTransactions = transactions.filter(t => {
+      let filteredTransactions = transactions.filter(t => {
         const tTime = t.date?.seconds ? t.date.seconds * 1000 : new Date(t.date).getTime();
         if (isNaN(tTime)) return false;
         const tDate = new Date(tTime);
         return tDate >= start && tDate <= end;
-      }).sort((a, b) => {
+      });
+
+      if (exportType === 'receitas') {
+        filteredTransactions = filteredTransactions.filter(t => t.type === 'income');
+      } else if (exportType === 'despesas') {
+        filteredTransactions = filteredTransactions.filter(t => t.type === 'expense');
+      }
+
+      filteredTransactions.sort((a, b) => {
         const aTime = a.date?.seconds ? a.date.seconds * 1000 : new Date(a.date).getTime();
         const bTime = b.date?.seconds ? b.date.seconds * 1000 : new Date(b.date).getTime();
         return aTime - bTime;
@@ -746,6 +777,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
       const netChange = periodIncome - periodExpenses;
 
       const payload = {
+        reportTitle: exportType === 'geral' ? 'RELATÓRIO DE MOVIMENTAÇÕES' : exportType === 'receitas' ? 'RELATÓRIO DE RECEITAS' : 'RELATÓRIO DE DESPESAS',
         user: { username: user.username },
         transactions: filteredTransactions.map(t => {
           const account = accounts.find(a => a.id === t.accountId);
@@ -2498,6 +2530,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
                   </select>
                 </div>
 
+                {transactionType === 'expense' && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Meio de Pagamento</label>
+                    <select 
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value as 'pix' | 'dinheiro' | 'credito' | 'debito')}
+                      className="w-full bg-zinc-800 border-none rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-orange-600 transition-all text-sm"
+                    >
+                      <option value="pix">PIX</option>
+                      <option value="dinheiro">Dinheiro</option>
+                      <option value="credito">Cartão de Crédito</option>
+                      <option value="debito">Cartão de Débito</option>
+                    </select>
+                  </div>
+                )}
+
                 <button 
                   type="submit"
                   disabled={isSubmitting}
@@ -2922,6 +2970,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
                     />
                   </div>
                 </div>
+                
+                <div className="space-y-1.5 lg:space-y-2">
+                  <label className="text-[9px] lg:text-xs font-bold text-zinc-500 uppercase tracking-widest ml-1">Tipo de Relatório</label>
+                  <select 
+                    value={exportType}
+                    onChange={(e) => setExportType(e.target.value as 'geral' | 'receitas' | 'despesas')}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl lg:rounded-2xl px-3 py-3 lg:px-4 lg:py-4 text-xs lg:text-base text-white focus:ring-2 focus:ring-orange-600 transition-all outline-none"
+                  >
+                    <option value="geral">Relatório Geral da Conta</option>
+                    <option value="receitas">Somente Recebimentos</option>
+                    <option value="despesas">Somente Gastos</option>
+                  </select>
+                </div>
 
                 <div className="flex items-center space-x-2 lg:space-x-3">
                   <button 
@@ -2987,6 +3048,61 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
         isOpen={showInstallGuide} 
         onClose={() => setShowInstallGuide(false)} 
       />
+
+      {/* Expiration Warning Modal */}
+      <AnimatePresence>
+        {showExpirationWarning && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={() => setShowExpirationWarning(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-zinc-900 border border-orange-500/30 rounded-[2rem] p-8 overflow-hidden shadow-2xl"
+            >
+              <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/10 blur-[40px] rounded-full" />
+              <button 
+                onClick={() => setShowExpirationWarning(false)}
+                className="absolute top-4 right-4 p-2 bg-zinc-800/50 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-full transition-colors z-10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="flex flex-col items-center text-center space-y-6 relative z-10">
+                <div className="w-20 h-20 bg-orange-500/10 border border-orange-500/20 rounded-full flex items-center justify-center">
+                  <Clock className="w-10 h-10 text-orange-500" />
+                </div>
+                
+                <div>
+                  <h2 className="text-2xl font-black text-white mb-2">Atenção!</h2>
+                  <p className="text-zinc-400 font-medium leading-relaxed">
+                    Falta{expirationWarningDays === 1 ? '' : 'm'} apenas <strong className="text-orange-400">{expirationWarningDays} dia{expirationWarningDays === 1 ? '' : 's'}</strong> para o seu acesso {user.plan === 'trial' || !user.plan ? 'de Teste' : 'Premium (PIX)'} expirar.
+                  </p>
+                </div>
+
+                <div className="p-4 bg-zinc-950/50 border border-zinc-800/80 rounded-[1.5rem] w-full">
+                  <p className="text-xs text-zinc-500 mb-4 font-medium px-2">Não perca o controle das suas finanças e o acesso aos recursos exclusivos.</p>
+                  <button
+                    onClick={() => {
+                      setShowExpirationWarning(false);
+                      setView('subscription');
+                    }}
+                    className="w-full py-3.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-orange-600/20 active:scale-95"
+                  >
+                    Renovar Agora
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

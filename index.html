@@ -16,6 +16,21 @@
   <meta name="twitter:card" content="summary_large_image" />
 
   <title>VORIX GESTÃO FINANCEIRA</title>
+  <script>
+    window.onerror = function(msg, url, line, col, error) {
+      const display = document.getElementById('error-display');
+      if (display) {
+        display.style.display = 'block';
+        display.innerHTML = '<h1 style="color:white;margin-bottom:20px;font-size:24px;">❌ Erro de Inicialização</h1>' +
+          '<div style="background:#18181b;padding:20px;border-radius:8px;border:1px solid #27272a;">' +
+          '<strong>Mensagem:</strong> ' + msg + '<br><br>' +
+          '<strong>Arquivo:</strong> ' + url + ':' + line + ':' + col + '<br><br>' +
+          '<strong>Stack Trace:</strong><br><pre style="margin-top:10px;font-size:12px;opacity:0.8;">' + (error ? error.stack : 'N/A') + '</pre></div>' +
+          '<div style="margin-top:20px;color:#a1a1aa;font-size:14px;">Dica: Verifique se o arquivo .env está configurado corretamente.</div>';
+      }
+      return false;
+    };
+  </script>
   
   <!-- PWA Meta Tags -->
   <link rel="manifest" href="/manifest.json" />
@@ -24,7 +39,7 @@
   <meta name="apple-mobile-web-app-title" content="Vorix" />
   
   <!-- MercadoPago.js v2 — SDK oficial para tokenização de cartão -->
-  <script src="https://sdk.mercadopago.com/js/v2"></script>
+  <script src="https://sdk.mercadopago.com/js/v2" async></script>
 
   <!-- Service Worker Registration -->
   <script>
@@ -36,10 +51,73 @@
       });
     }
   </script>
+  
+  <style>
+    #error-display {
+      position: fixed;
+      inset: 0;
+      background: #1a0505;
+      color: #ff8888;
+      padding: 20px;
+      font-family: monospace;
+      z-index: 10000;
+      display: none;
+      white-space: pre-wrap;
+      overflow: auto;
+    }
+    #initial-loader {
+      position: fixed;
+      inset: 0;
+      background: #09090b;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .loader-logo {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 20px;
+      animation: pulse 2s infinite ease-in-out;
+    }
+    .loader-bar {
+      width: 200px;
+      height: 4px;
+      background: #27272a;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .loader-progress {
+      width: 100%;
+      height: 100%;
+      background: #ff4d00;
+      animation: loading 1.5s infinite ease-in-out;
+      transform-origin: left;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(0.95); }
+    }
+    @keyframes loading {
+      0% { transform: translateX(-100%); }
+      50% { transform: translateX(0); }
+      100% { transform: translateX(100%); }
+    }
+  </style>
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="error-display"></div>
+  <div id="root">
+    <div id="initial-loader">
+      <img src="/favicon.png" alt="Vorix" class="loader-logo">
+      <div class="loader-bar">
+        <div class="loader-progress"></div>
+      </div>
+    </div>
+  </div>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 

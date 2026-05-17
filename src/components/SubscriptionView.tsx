@@ -108,9 +108,9 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user, onSucc
     },
     premium: {
       name: 'Plano Premium',
-      price: '17,99',
+      price: '0,99',
       period: 'por mês',
-      priceNum: 17.99,
+      priceNum: 0.99,
       features: ['Contas Ilimitadas', 'IA Ilimitada', 'Radar Completo', 'Relatórios Ilimitados (PDF)', 'Suporte Prioritário', 'Missões Exclusivas'],
     },
   };
@@ -259,11 +259,13 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user, onSucc
           if (s.status === 'approved') {
             clearInterval(pixPollingRef.current);
             // Failsafe: Atualiza o doc localmente caso o webhook demore
+            const endsAt = new Date();
+            endsAt.setDate(endsAt.getDate() + 30);
             await updateDoc(doc(db, 'users', user.uid), {
               plan: selectedPlan,
               subscriptionStatus: 'active',
               isPaid: true,
-              trialEndsAt: null
+              trialEndsAt: endsAt
             });
             setPixStatus('approved');
             if (onSuccess) {
@@ -300,7 +302,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user, onSucc
   if (isSubscribed) {
     const isPremium = user.plan === 'premium';
     const planFeatures = isPremium ? plans.premium.features : plans.pro.features;
-    const planPrice = isPremium ? '17,99' : '10,99';
+    const planPrice = isPremium ? '0,99' : '10,99';
 
     return (
       <div className="space-y-8 lg:space-y-10 pb-20">
@@ -409,13 +411,21 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user, onSucc
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-2">
-                  <span className="text-zinc-500 text-sm">Valor mensal</span>
+                  <span className="text-zinc-500 text-sm">{user.mpSubscriptionId ? 'Valor mensal' : 'Valor pago'}</span>
                   <span className="text-white font-bold text-sm">R$ {planPrice}</span>
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-zinc-500 text-sm">Renovação</span>
-                  <span className="text-white font-bold text-sm">Automática</span>
+                  <span className="text-white font-bold text-sm">{user.mpSubscriptionId ? 'Automática' : 'Manual (Via PIX)'}</span>
                 </div>
+                {!user.mpSubscriptionId && user.trialEndsAt && (
+                  <div className="flex items-center justify-between py-2 border-t border-zinc-800/60 mt-2 pt-3">
+                    <span className="text-zinc-500 text-sm">Acesso até</span>
+                    <span className="text-white font-bold text-sm">
+                      {new Date(user.trialEndsAt.seconds ? user.trialEndsAt.seconds * 1000 : user.trialEndsAt).toLocaleDateString('pt-BR')}
+                    </span>
+                  </div>
+                )}
               </div>
             </motion.div>
 

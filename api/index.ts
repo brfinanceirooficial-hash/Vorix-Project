@@ -34,7 +34,7 @@ const mpClient = new MercadoPagoConfig({
 
 const PLANS: Record<string, { title: string; price: number }> = {
   pro:     { title: 'Vorix Finance — Plano Pro',     price: 10.99 },
-  premium: { title: 'Vorix Finance — Plano Premium', price: 17.99 },
+  premium: { title: 'Vorix Finance — Plano Premium', price: 0.99 },
 };
 
 async function activatePlan(userId: string, planId: string, mpSubscriptionId?: string, mpPayerId?: string) {
@@ -42,10 +42,19 @@ async function activatePlan(userId: string, planId: string, mpSubscriptionId?: s
     plan: planId,
     is_paid: true,
     subscription_status: 'active',
-    trial_ends_at: null, // Zerar trial ao assinar
   };
-  if (mpSubscriptionId) updateData.mp_subscription_id = mpSubscriptionId;
-  if (mpPayerId)        updateData.mp_payer_id = mpPayerId;
+
+  if (mpSubscriptionId) {
+    updateData.mp_subscription_id = mpSubscriptionId;
+    updateData.trial_ends_at = null; // Assinatura recorrente não tem data de fim local
+  } else {
+    // Pagamento único (PIX) dá 30 dias de acesso
+    const endsAt = new Date();
+    endsAt.setDate(endsAt.getDate() + 30);
+    updateData.trial_ends_at = endsAt.toISOString();
+  }
+
+  if (mpPayerId) updateData.mp_payer_id = mpPayerId;
 
   const { error } = await supabase
     .from('users')
@@ -246,6 +255,83 @@ app.get("/api/checkout/pix-status/:paymentId", async (req, res) => {
   } catch (error: any) {
     console.error("[pix-status] Erro:", error);
     return res.status(500).json({ error: "Falha ao verificar status" });
+  }
+});
+
+// ============================================================
+// CRON — RENOVAÇÃO PIX (Rodar diariamente via serviço externo)
+// ============================================================
+app.post("/api/cron/renew-pix", async (req, res) => {
+  // Segurança básica: Verificar um secret via Header para evitar chamadas indevidas
+  const authHeader = req.headers.authorization;
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  try {
+    const now = new Date();
+    const in3Days = new Date();
+    in3Days.setDate(now.getDate() + 3);
+
+    // 1. Buscar todos os usuários Premium/Pro (is_paid = true)
+    // que pagaram via PIX (mp_subscription_id = null)
+    // e cujo trial_ends_at vai expirar nos próximos 3 dias
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, email, username, plan, whatsappNumber, whatsappConnected')
+      .eq('subscription_status', 'active')
+      .is('mp_subscription_id', null)
+      .not('trial_ends_at', 'is', null)
+      .lte('trial_ends_at', in3Days.toISOString())
+      .gte('trial_ends_at', now.toISOString()); // Opcional, para não gerar fatura de quem já expirou faz tempo
+
+    if (error) throw error;
+    if (!users || users.length === 0) {
+      return res.json({ message: "Nenhum usuário precisa de renovação PIX hoje." });
+    }
+
+    let generatedCount = 0;
+
+    for (const user of users) {
+      const planId = user.plan || 'pro';
+      const plan = PLANS[planId] || PLANS['pro'];
+
+      const payment = new Payment(mpClient);
+      const result = await payment.create({
+        body: {
+          transaction_amount: plan.price,
+          description: `Renovação Mensal - ${plan.title}`,
+          payment_method_id: 'pix',
+          external_reference: user.id, // Fundamental para o webhook adicionar os 30 dias automaticamente
+          payer: {
+            email: user.email || 'cliente@vorix.com',
+            first_name: user.username || 'Cliente',
+            last_name: 'Vorix',
+          },
+          metadata: {
+            user_id: user.id,
+            plan_id: planId,
+            is_renewal: true
+          },
+        },
+      });
+
+      generatedCount++;
+      const qrData = result.point_of_interaction?.transaction_data;
+      
+      // Aqui você faz a integração com Z-API, Evolution API, Twilio, etc.
+      // Exemplo fictício:
+      if (user.whatsappConnected && user.whatsappNumber) {
+        console.log(`[cron] Enviar PIX de renovação para o WhatsApp: ${user.whatsappNumber}`);
+        console.log(`Copia e Cola: ${qrData?.qr_code}`);
+        // await fetch('sua-api-de-whatsapp', { ... })
+      }
+    }
+
+    return res.json({ success: true, message: `Cobranças PIX geradas e enviadas para ${generatedCount} usuários.` });
+  } catch (err: any) {
+    console.error("[cron renew-pix] Error:", err);
+    return res.status(500).json({ error: "Erro ao gerar PIX recorrente", details: err.message });
   }
 });
 
@@ -526,7 +612,7 @@ app.post("/api/export-pdf", async (req, res) => {
     doc.fillColor(VORIX_ORANGE).fontSize(32).font("Helvetica-Bold").text("VORIX", 40, 40);
     doc.fillColor(VORIX_WHITE).fontSize(10).font("Helvetica").text("CENTRO DE COMANDO FINANCEIRO", 40, 78, { characterSpacing: 1.5 });
 
-    doc.fillColor(VORIX_WHITE).fontSize(8).font("Helvetica-Bold").text("RELATÓRIO DE MOVIMENTAÇÕES", 300, 45, { align: "right", width: pageWidth - 340 });
+    doc.fillColor(VORIX_WHITE).fontSize(8).font("Helvetica-Bold").text(req.body.reportTitle || "RELATÓRIO DE MOVIMENTAÇÕES", 300, 45, { align: "right", width: pageWidth - 340 });
     doc.font("Helvetica").fillColor(VORIX_WHITE).text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, 300, 60, { align: "right", width: pageWidth - 340 });
     doc.moveDown(6);
 

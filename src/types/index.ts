@@ -52,6 +52,7 @@ export interface Transaction {
   type: 'income' | 'expense';
   category: string;
   description: string;
+  paymentMethod?: 'pix' | 'dinheiro' | 'credito' | 'debito';
   date: any; // Firestore Timestamp
 }
 

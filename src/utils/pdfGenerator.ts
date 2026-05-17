@@ -26,7 +26,8 @@ export const generatePDFReport = (payload: any) => {
   // Report Info
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text("RELATÓRIO DE MOVIMENTAÇÕES", 195, 20, { align: "right" });
+  const reportTitle = payload.reportTitle || "RELATÓRIO DE MOVIMENTAÇÕES";
+  doc.text(reportTitle, 195, 20, { align: "right" });
   
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
