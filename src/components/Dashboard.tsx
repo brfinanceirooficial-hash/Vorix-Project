@@ -591,11 +591,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
     setCelebratingMission(null);
   };
 
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (!value) {
+      setAmount('');
+      return;
+    }
+    const numValue = parseInt(value, 10);
+    const formattedValue = (numValue / 100).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+    setAmount(formattedValue);
+  };
+
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !amount || !description || !accountId) return;
 
-    const numAmount = parseFloat(amount);
+    const cleanAmount = amount.replace(/\./g, '').replace(',', '.');
+    const numAmount = parseFloat(cleanAmount);
+    if (isNaN(numAmount) || numAmount <= 0) return;
+
     setIsSubmitting(true);
     
     try {
@@ -2460,11 +2477,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Valor (R$)</label>
                   <input 
-                    type="number" 
-                    step="0.01"
+                    type="text" 
+                    inputMode="numeric"
                     required
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={handleAmountChange}
                     placeholder="0,00"
                     className="w-full bg-zinc-800 border-none rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-orange-600 transition-all font-bold text-lg"
                   />
