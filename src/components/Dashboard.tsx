@@ -60,9 +60,10 @@ import { SubscriptionView } from './SubscriptionView';
 import { generateProactiveAlerts } from '../lib/alerts';
 import { initializeUserGamification, updateMissionProgress, checkAndUnlockBadge, checkMilestones, markMissionAsNotified } from '../services/gamificationService';
 import { MissionCelebration } from './MissionCelebration';
-import { Flame } from 'lucide-react';
+import { Flame, FileSpreadsheet } from 'lucide-react';
 import { updateStreakOnActivity } from '../services/streakService';
 import { generatePDFReport } from '../utils/pdfGenerator';
+import { generateExcelReport } from '../utils/excelGenerator';
 interface DashboardProps {
   user: User;
   onSubscriptionSuccess?: (plan: 'pro' | 'premium') => void;
@@ -865,6 +866,112 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
     } catch (error: any) {
       console.error('Export error:', error);
       setSettingError('Erro ao exportar relatório: ' + error.message);
+      setTimeout(() => setSettingError(null), 5000);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!user) return;
+    if (transactions.length === 0) {
+      alert("Você precisa adicionar pelo menos uma transação para gerar um relatório.");
+      return;
+    }
+
+    setIsExporting(true);
+
+    // Report Limit Check
+    if (user.plan !== 'premium') {
+      if (user.plan === 'pro') {
+        // Pro: 1 report per week
+        if (user.lastReportDate) {
+          const lastReport = new Date(user.lastReportDate);
+          const oneWeekAgo = new Date();
+          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+          if (lastReport > oneWeekAgo) {
+            alert("O plano Pro permite 1 relatório por semana. Faça o upgrade para o Premium!");
+            setIsExporting(false);
+            return;
+          }
+        }
+      } else {
+        // Trial/Free: 2 reports total
+        if ((user.reportsCount || 0) >= 2) {
+          alert("Você atingiu o limite de 2 relatórios totais do plano de Teste. Faça o upgrade!");
+          setIsExporting(false);
+          return;
+        }
+      }
+    }
+
+    try {
+      // Filter transactions by date range in local time to avoid timezone offset issues
+      const start = new Date(`${exportStartDate}T00:00:00`);
+      const end = new Date(`${exportEndDate}T23:59:59.999`);
+
+      let filteredTransactions = transactions.filter(t => {
+        const tTime = t.date?.seconds ? t.date.seconds * 1000 : new Date(t.date).getTime();
+        if (isNaN(tTime)) return false;
+        const tDate = new Date(tTime);
+        return tDate >= start && tDate <= end;
+      });
+
+      if (exportType === 'receitas') {
+        filteredTransactions = filteredTransactions.filter(t => t.type === 'income');
+      } else if (exportType === 'despesas') {
+        filteredTransactions = filteredTransactions.filter(t => t.type === 'expense');
+      }
+
+      filteredTransactions.sort((a, b) => {
+        const aTime = a.date?.seconds ? a.date.seconds * 1000 : new Date(a.date).getTime();
+        const bTime = b.date?.seconds ? b.date.seconds * 1000 : new Date(b.date).getTime();
+        return aTime - bTime;
+      });
+
+      const periodIncome = filteredTransactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
+      const periodExpenses = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
+      const netChange = periodIncome - periodExpenses;
+
+      const payload = {
+        exportType,
+        reportTitle: exportType === 'geral' ? 'RELATÓRIO DE MOVIMENTAÇÕES' : exportType === 'receitas' ? 'RELATÓRIO DE RECEITAS' : 'RELATÓRIO DE DESPESAS',
+        user: { username: user.username },
+        transactions: filteredTransactions.map(t => {
+          const account = accounts.find(a => a.id === t.accountId);
+          const tTime = t.date?.seconds ? t.date.seconds * 1000 : new Date(t.date).getTime();
+          return {
+            description: t.description,
+            category: t.category,
+            type: t.type as 'income' | 'expense',
+            accountName: account ? account.name : 'N/A',
+            amountFormatted: formatCurrency(t.amount).replace('R$', '').trim(),
+            dateFormatted: new Date(tTime).toLocaleDateString('pt-BR'),
+            amount: t.amount
+          };
+        }),
+        dateRange: `${start.toLocaleDateString('pt-BR')} até ${end.toLocaleDateString('pt-BR')}`,
+        totalBalance: formatCurrency(totalBalance),
+        monthlyIncome: formatCurrency(monthlyIncome),
+        monthlyExpenses: formatCurrency(monthlyExpenses),
+        periodIncome: formatCurrency(periodIncome),
+        periodExpenses: formatCurrency(periodExpenses),
+        netChange: formatCurrency(netChange)
+      };
+
+      await generateExcelReport(payload);
+      
+      // Update report tracking
+      const today = new Date().toISOString().split('T')[0];
+      await updateDoc(doc(db, 'users', user.uid), {
+        reportsCount: (user.reportsCount || 0) + 1,
+        lastReportDate: today
+      });
+
+      setShowExportModal(false);
+    } catch (error: any) {
+      console.error('Export error:', error);
+      setSettingError('Erro ao exportar planilha Excel: ' + error.message);
       setTimeout(() => setSettingError(null), 5000);
     } finally {
       setIsExporting(false);
@@ -3060,24 +3167,43 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
                 </div>
               </div>
 
-              <div className="pt-2 lg:pt-4">
-                <button 
-                  onClick={handleExportPDF}
-                  disabled={isExporting}
-                  className="w-full py-4 lg:py-5 bg-[#ff4d00] hover:bg-[#e64500] text-white rounded-xl lg:rounded-2xl text-sm lg:text-base font-bold transition-all active:scale-95 flex items-center justify-center space-x-2 lg:space-x-3 shadow-lg shadow-[#ff4d00]/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isExporting ? (
-                    <>
-                      <Loader2 className="w-5 h-5 lg:w-6 lg:h-6 animate-spin" />
-                      <span>Gerando Relatório...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-5 h-5 lg:w-6 lg:h-6" />
-                      <span>Gerar PDF Profissional</span>
-                    </>
-                  )}
-                </button>
+              <div className="pt-2 lg:pt-4 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={handleExportPDF}
+                    disabled={isExporting}
+                    className="w-full py-3.5 bg-[#ff4d00] hover:bg-[#e64500] text-white rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center justify-center space-x-2 shadow-lg shadow-[#ff4d00]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isExporting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Gerando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        <span>Gerar PDF</span>
+                      </>
+                    )}
+                  </button>
+                  <button 
+                    onClick={handleExportExcel}
+                    disabled={isExporting}
+                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isExporting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Gerando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileSpreadsheet className="w-4 h-4" />
+                        <span>Gerar Excel</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 <p className="text-center text-zinc-600 text-[8px] lg:text-[10px] mt-3 lg:mt-4 uppercase tracking-[0.2em] font-medium">
                   Relatório com validade fiscal e identidade Vorix
                 </p>
