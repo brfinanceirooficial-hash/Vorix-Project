@@ -387,28 +387,35 @@ export const generateExcelReport = async (payload: ExportPayload) => {
     const buffer = await workbook.xlsx.writeBuffer();
     const xlsxBlob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-    // Feature detect Web Share API with files (for Mobile)
+    let sharedSuccessfully = false;
+    // Feature detect Web Share API with files (for Mobile/OS integration)
     if (navigator.share && navigator.canShare) {
-      const file = new File([xlsxBlob], filename, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      if (navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          title: 'Relatório Financeiro Vorix',
-          text: 'Aqui está seu relatório financeiro em Excel.',
-          files: [file]
-        });
-        return; // Success, exit
+      try {
+        const file = new File([xlsxBlob], filename, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'Relatório Financeiro Vorix',
+            text: 'Aqui está seu relatório financeiro em Excel.',
+            files: [file]
+          });
+          sharedSuccessfully = true;
+        }
+      } catch (shareError) {
+        console.log('Share was cancelled or failed, falling back to download:', shareError);
       }
     }
 
-    // Standard Download fallback (Desktop)
-    const fileURL = URL.createObjectURL(xlsxBlob);
-    const link = document.createElement('a');
-    link.href = fileURL;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(fileURL), 3000);
+    if (!sharedSuccessfully) {
+      // Standard Download fallback (Desktop)
+      const fileURL = URL.createObjectURL(xlsxBlob);
+      const link = document.createElement('a');
+      link.href = fileURL;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(fileURL), 3000);
+    }
   } catch (error) {
     console.error('Error saving Excel:', error);
     throw error;
