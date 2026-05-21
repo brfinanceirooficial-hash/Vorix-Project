@@ -278,7 +278,7 @@ export const generateExcelReport = async (payload: ExportPayload) => {
       row.getCell(5).value = tx.type === 'income' ? 'ENTRADA' : 'SAÍDA';
       
       // Store actual number for formulas and styling
-      row.getCell(6).value = tx.amount;
+      row.getCell(6).value = Number(tx.amount);
 
       // Alignments & formats
       row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
@@ -336,7 +336,12 @@ export const generateExcelReport = async (payload: ExportPayload) => {
     
     // Formula for sum
     const formulaRange = `F${startDataRow}:F${totalRowIndex - 1}`;
-    sheet.getCell(`F${totalRowIndex}`).value = { formula: `=SUM(${formulaRange})` };
+    let formula = `=SUM(${formulaRange})`;
+    if (payload.exportType === 'geral') {
+      const typeRange = `E${startDataRow}:E${totalRowIndex - 1}`;
+      formula = `=SUMIF(${typeRange}, "ENTRADA", ${formulaRange}) - SUMIF(${typeRange}, "SAÍDA", ${formulaRange})`;
+    }
+    sheet.getCell(`F${totalRowIndex}`).value = { formula };
     sheet.getCell(`F${totalRowIndex}`).numFmt = '"R$ " #,##0.00;("R$ " #,##0.00);"-"';
 
     // Style the Total Row
