@@ -30,6 +30,46 @@
       }
       return false;
     };
+
+    // Segurança: Bloquear DevTools (F12, clique direito, etc.) em Produção
+    (function() {
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('192.168.')) {
+        return; // Permite F12 e botão direito em desenvolvimento local
+      }
+
+      // Desativa menu de contexto (clique direito)
+      document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+      });
+
+      // Desativa atalhos comuns de inspeção
+      document.addEventListener('keydown', function(e) {
+        // F12 (123)
+        if (e.keyCode === 123) {
+          e.preventDefault();
+          return false;
+        }
+        // Ctrl+Shift+I (Inspeção), Ctrl+Shift+J (Console), Ctrl+Shift+C (Inspecionar elemento)
+        if (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67 || e.key === 'I' || e.key === 'J' || e.key === 'C')) {
+          e.preventDefault();
+          return false;
+        }
+        // Ctrl+U (Ver código-fonte)
+        if (e.ctrlKey && (e.keyCode === 85 || e.key === 'U' || e.key === 'u')) {
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      // Anti-Debugger: pausa a execução se o devtools for forçado a abrir
+      setInterval(function() {
+        try {
+          (function() {
+            return false;
+          }['constructor']('debugger')());
+        } catch (e) {}
+      }, 500);
+    })();
   </script>
   
   <!-- PWA Meta Tags -->
