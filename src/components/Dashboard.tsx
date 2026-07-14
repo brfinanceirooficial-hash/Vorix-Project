@@ -45,7 +45,11 @@ import {
   EyeOff,
   StickyNote,
   Camera,
-  MessageCircle
+  MessageCircle,
+  Home,
+  Building2,
+  Landmark,
+  PiggyBank,
 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -1141,276 +1145,545 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
       </motion.aside>
 
       {/* Main Content */}
-      <main className={`flex-1 overflow-y-auto px-3 py-3 lg:p-12 space-y-5 lg:space-y-8 custom-scrollbar relative ${view === 'ia' ? 'flex flex-col pb-0' : ''}`}>
-        {/* Header */}
-        <header className="flex flex-col space-y-2.5 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between">
-          {/* Top Row for Mobile: Level and PONTOS */}
-          <div className="flex lg:hidden items-center justify-between px-0.5">
-             <div className="flex items-center space-x-1.5">
-                <div className="px-1.5 py-0.5 bg-orange-600/10 border border-orange-600/20 rounded-full">
-                  <span className="text-[7px] font-bold text-orange-500 uppercase tracking-widest">
-                    Nível {Math.floor((user.vorixScore || 0) / 1000) + 1}
-                  </span>
+      <main className={`flex-1 overflow-y-auto custom-scrollbar relative ${
+        isMobile ? 'px-0 py-0 pb-24' : 'px-3 py-3 lg:p-12 space-y-5 lg:space-y-8'
+      } ${view === 'ia' ? 'flex flex-col' : ''}`}>
+
+        {/* ============================================================ */}
+        {/* MOBILE PREMIUM HEADER — oculto em desktop                    */}
+        {/* ============================================================ */}
+        {isMobile && (
+          <div className="lg:hidden">
+            {/* Top bar: avatar + saudação + ícones */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setView('settings')}
+                  className="relative w-11 h-11 rounded-2xl overflow-hidden border-2 border-[#ff4d00]/40 active:scale-95 transition-all shadow-lg shadow-[#ff4d00]/10"
+                >
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt={user.username} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                      <UserIcon className="w-5 h-5 text-zinc-400" />
+                    </div>
+                  )}
+                  <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-black" />
+                </button>
+                <div>
+                  <p className="text-zinc-400 text-[11px] font-medium">
+                    {new Date().getHours() < 12 ? 'Bom dia' : new Date().getHours() < 18 ? 'Boa tarde' : 'Boa noite'} 👋
+                  </p>
+                  <p className="text-white text-sm font-bold leading-tight">{user.username}</p>
                 </div>
+              </div>
+              <div className="flex items-center space-x-2">
                 {user.subscriptionStatus === 'trialing' && (
-                  <div className="px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 rounded-full flex items-center space-x-1">
-                    <Clock className="w-2 h-2 text-orange-500" />
-                    <span className="text-[7px] font-bold text-zinc-500 uppercase tracking-widest">{daysLeft}D</span>
-                  </div>
+                  <button
+                    onClick={() => setView('subscription')}
+                    className="px-2.5 py-1 bg-orange-500/15 border border-orange-500/25 rounded-full"
+                  >
+                    <span className="text-[9px] font-bold text-orange-400 uppercase tracking-widest">{daysLeft}D Trial</span>
+                  </button>
                 )}
                 {user.subscriptionStatus === 'active' && user.plan && user.plan !== 'trial' && (
-                  <div className={`px-1.5 py-0.5 rounded-full flex items-center space-x-1 border ${
-                    user.plan === 'premium'
-                      ? 'bg-emerald-500/20 border-emerald-500/30'
-                      : 'bg-orange-500/20 border-orange-500/30'
+                  <div className={`px-2.5 py-1 rounded-full border ${
+                    user.plan === 'premium' ? 'bg-emerald-500/15 border-emerald-500/25' : 'bg-orange-500/15 border-orange-500/25'
                   }`}>
-                    <Star className={`w-2 h-2 fill-current ${
+                    <span className={`text-[9px] font-bold uppercase tracking-widest ${
                       user.plan === 'premium' ? 'text-emerald-400' : 'text-orange-400'
-                    }`} />
-                    <span className={`text-[7px] font-bold uppercase tracking-widest ${
-                      user.plan === 'premium' ? 'text-emerald-400' : 'text-orange-400'
-                    }`}>{user.plan === 'premium' ? 'PREMIUM' : 'PRO'}</span>
-                  </div>
-                )}
-             </div>
-             <motion.button 
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setView('missions')}
-                className="flex items-center space-x-1 bg-zinc-900/50 border border-zinc-800 px-2 py-0.5 rounded-full"
-             >
-                <Zap className="w-2 h-2 text-[#ff4d00] fill-[#ff4d00]" />
-                <span className="text-[8px] font-bold text-white uppercase tracking-wider">
-                  {user.vorixScore} PONTOS
-                </span>
-             </motion.button>
-          </div>
-
-          <div className="flex items-center justify-between w-full lg:w-auto">
-            <div className="flex items-center space-x-3">
-              <button 
-                onClick={() => setIsSidebarOpen(true)}
-                className="lg:hidden p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-all active:scale-95"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-              <div className="lg:hidden">
-                <p className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider">Olá,</p>
-                <h1 className="text-sm font-bold text-white leading-tight">{user.username}</h1>
-              </div>
-              <h1 className="hidden lg:block text-xl font-bold tracking-tight text-white">Dashboard</h1>
-            </div>
-
-            <div className="flex items-center space-x-2 lg:hidden">
-              <button 
-                onClick={() => setView('settings')}
-                className="w-8 h-8 rounded-lg overflow-hidden border-2 border-zinc-800 active:scale-95 transition-all"
-              >
-                {user.photoURL ? (
-                  <img src={user.photoURL} alt={user.username} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                    <UserIcon className="w-3.5 h-3.5 text-zinc-500" />
-                  </div>
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between lg:justify-end space-x-4 lg:space-x-6">
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="hidden lg:flex flex-col items-end"
-            >
-              <div className="flex items-center space-x-4">
-                {user.subscriptionStatus === 'trialing' && (
-                  <div className="flex items-center space-x-2 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-full">
-                    <Clock className="w-3 h-3 text-orange-500" />
-                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{daysLeft} dias de teste</span>
-                  </div>
-                )}
-                {user.subscriptionStatus === 'active' && user.plan && user.plan !== 'trial' && (
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    onClick={() => setView('subscription')}
-                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border transition-all ${
-                      user.plan === 'premium'
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
-                        : 'bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20'
-                    }`}
-                  >
-                    <Star className="w-3 h-3 fill-current" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">
-                      Cliente {user.plan === 'premium' ? 'Premium' : 'Pro'} ✓
+                    }`}>
+                      {user.plan === 'premium' ? '✦ Premium' : '✦ Pro'}
                     </span>
-                  </motion.button>
-                )}
-                {user.subscriptionStatus === 'trialing' && (
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setView('subscription')}
-                    className="flex items-center space-x-2 px-4 py-2 bg-orange-500/10 border border-orange-500/20 rounded-full text-orange-500 text-xs font-bold hover:bg-orange-500/20 transition-all"
-                  >
-                    <Star className="w-3.5 h-3.5 fill-orange-500" />
-                    <span>Upgrade</span>
-                  </motion.button>
-                )}
-                <div className="bg-zinc-900/50 border border-zinc-800 px-4 py-2 rounded-full flex items-center space-x-2">
-                  <Zap className="w-4 h-4 text-[#ff4d00] fill-[#ff4d00]" />
-                  <motion.span 
-                    key={user.vorixScore}
-                    initial={{ scale: 1.2, color: '#ffffff' }}
-                    animate={{ scale: 1, color: '#ff4d00' }}
-                    className="text-xs font-bold uppercase tracking-wider"
-                  >
-                    {user.vorixScore} PONTOS
-                  </motion.span>
-                </div>
-                <div className="bg-zinc-900/50 border border-zinc-800 px-4 py-2 rounded-full flex items-center space-x-2">
-                  <motion.div
-                    animate={streakInfo.animate}
-                    transition={{ repeat: Infinity, duration: streakInfo.needsUpdate ? 1 : 3 }}
-                    className={`${streakInfo.colorClass} ${streakInfo.glowClass}`}
-                  >
-                    <Flame className="w-4 h-4 fill-current" />
-                  </motion.div>
-                  <span className="text-bold text-xs uppercase tracking-wider">
-                    {streakInfo.currentStreak || 0} Dias
-                  </span>
-                </div>
-              </div>
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1 mr-2">
-                Nível {Math.floor((user.vorixScore || 0) / 1000) + 1}
-              </span>
-            </motion.div>
-
-            <div className="hidden lg:flex items-center space-x-4 pl-6 border-l border-zinc-800">
-              <div className="text-right">
-                <p className="text-sm font-bold text-white leading-none">{user.username}</p>
-                <p className={`text-[10px] uppercase tracking-widest mt-1 ${user.subscriptionStatus === 'trialing' ? 'text-orange-500' : 'text-emerald-500'}`}>
-                  {user.subscriptionStatus === 'trialing' ? 'Período de Teste' : 'Premium'}
-                </p>
-              </div>
-              <button 
-                onClick={() => setView('settings')}
-                className="w-10 h-10 rounded-xl overflow-hidden border-2 border-zinc-800 hover:border-orange-500 transition-all"
-              >
-                {user.photoURL ? (
-                  <img src={user.photoURL} alt={user.username} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                    <UserIcon className="w-5 h-5 text-zinc-500" />
                   </div>
                 )}
-              </button>
+                <button
+                  onClick={() => setView('alerts')}
+                  className="relative w-9 h-9 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center justify-center active:scale-95 transition-all"
+                >
+                  <Bell className="w-4 h-4 text-zinc-400" />
+                  {alerts.filter(a => !a.read).length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#ff4d00] rounded-full text-[8px] font-bold flex items-center justify-center">
+                      {alerts.filter(a => !a.read).length}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
 
-            <button 
-              onClick={() => setShowAdd(true)}
-              className="hidden lg:flex bg-[#ff4d00] hover:bg-[#e64500] text-white px-6 py-2.5 rounded-full text-sm font-bold items-center space-x-2 transition-all active:scale-95 shadow-lg shadow-[#ff4d00]/20"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Lançar</span>
-            </button>
-          </div>
-        </header>
+            {/* Hero Balance Card */}
+            <div className="px-4 pb-4">
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                className="vorix-bank-card rounded-3xl p-6 shadow-2xl shadow-[#ff4d00]/20"
+              >
+                {/* Card top row */}
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-white/10 rounded-xl overflow-hidden backdrop-blur-sm">
+                      <img src="/favicon.png" alt="Vorix" className="w-full h-full object-cover" />
+                    </div>
+                    <span className="text-white/60 text-xs font-bold tracking-widest uppercase">Vorix</span>
+                  </div>
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setView('missions')}
+                    className="flex items-center space-x-1.5 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full"
+                  >
+                    <Zap className="w-3 h-3 text-orange-300 fill-orange-300" />
+                    <span className="text-[10px] font-bold text-white/80 uppercase tracking-wider">{user.vorixScore} pts</span>
+                  </motion.button>
+                </div>
 
-        {/* Floating Action Button for Mobile */}
-        <AnimatePresence>
-          {isMobile && view !== 'ia' && (
-            <motion.button
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setShowAdd(true)}
-              className="fixed bottom-8 right-6 w-14 h-14 bg-[#ff4d00] text-white rounded-2xl shadow-2xl shadow-[#ff4d00]/40 flex items-center justify-center z-40 lg:hidden"
-            >
-              <Plus className="w-8 h-8" />
-            </motion.button>
-          )}
-        </AnimatePresence>
+                {/* Balance */}
+                <div className="mb-5">
+                  <p className="text-white/50 text-[11px] font-semibold uppercase tracking-widest mb-1">Saldo Total</p>
+                  <motion.p
+                    key={totalBalance}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-4xl font-black text-white tracking-tight"
+                  >
+                    {formatCurrency(totalBalance)}
+                  </motion.p>
+                  <div className="flex items-center space-x-3 mt-2">
+                    <div className="flex items-center space-x-1">
+                      <ArrowUp className="w-3 h-3 text-emerald-400" />
+                      <span className="text-emerald-400 text-[11px] font-bold">{formatCurrency(monthlyIncome)}</span>
+                    </div>
+                    <div className="w-1 h-1 bg-white/20 rounded-full" />
+                    <div className="flex items-center space-x-1">
+                      <ArrowDown className="w-3 h-3 text-rose-400" />
+                      <span className="text-rose-400 text-[11px] font-bold">{formatCurrency(monthlyExpenses)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center space-x-3">
+                  <motion.button
+                    whileTap={{ scale: 0.93 }}
+                    onClick={() => { setTransactionType('income'); setShowAdd(true); }}
+                    className="flex-1 flex items-center justify-center space-x-2 bg-white/10 hover:bg-white/15 backdrop-blur-sm border border-white/10 rounded-2xl py-3 transition-all"
+                  >
+                    <ArrowDownRight className="w-4 h-4 text-emerald-400" />
+                    <span className="text-white font-bold text-xs">Receber</span>
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.93 }}
+                    onClick={() => { setTransactionType('expense'); setShowAdd(true); }}
+                    className="flex-1 flex items-center justify-center space-x-2 bg-[#ff4d00] hover:bg-[#e64500] rounded-2xl py-3 transition-all shadow-lg shadow-[#ff4d00]/30"
+                  >
+                    <ArrowUpRight className="w-4 h-4 text-white" />
+                    <span className="text-white font-bold text-xs">Gasto</span>
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.93 }}
+                    onClick={() => setView('transactions')}
+                    className="w-11 h-11 flex items-center justify-center bg-white/10 hover:bg-white/15 backdrop-blur-sm border border-white/10 rounded-2xl transition-all"
+                  >
+                    <History className="w-5 h-5 text-white" />
+                  </motion.button>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Quick Category Shortcuts */}
+            <div className="px-4 pb-2">
+              <div className="grid grid-cols-4 gap-3">
+                {[
+                  { icon: Building2, label: 'Contas', color: 'bg-blue-500/15 text-blue-400 border-blue-500/20', action: () => setView('accounts') },
+                  { icon: Target, label: 'Metas', color: 'bg-purple-500/15 text-purple-400 border-purple-500/20', action: () => setView('goals') },
+                  { icon: Trophy, label: 'Missões', color: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20', action: () => setView('missions') },
+                  { icon: Radar, label: 'Radar', color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', action: () => setView('radar') },
+                  { icon: AlertCircle, label: 'Alertas', color: 'bg-rose-500/15 text-rose-400 border-rose-500/20', action: () => setView('alerts') },
+                  { icon: StickyNote, label: 'Notas', color: 'bg-amber-500/15 text-amber-400 border-amber-500/20', action: () => setView('notes') },
+                  { icon: Download, label: 'Relatório', color: 'bg-zinc-700/50 text-zinc-300 border-zinc-700/50', action: () => setShowExportModal(true) },
+                  { icon: Settings, label: 'Config.', color: 'bg-zinc-700/50 text-zinc-300 border-zinc-700/50', action: () => setView('settings') },
+                ].map((item, index) => (
+                  <motion.button
+                    key={item.label}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.04 }}
+                    whileTap={{ scale: 0.88 }}
+                    onClick={item.action}
+                    className="category-item"
+                  >
+                    <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center ${item.color}`}>
+                      <item.icon className="w-6 h-6" />
+                    </div>
+                    <span className="text-zinc-400 text-[10px] font-semibold">{item.label}</span>
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* DESKTOP HEADER — oculto em mobile                           */}
+        {/* ============================================================ */}
+        {!isMobile && (
+          <header className="flex flex-col space-y-0 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center justify-between w-full lg:w-auto">
+              <div className="flex items-center space-x-3">
+                <h1 className="text-xl font-bold tracking-tight text-white">Dashboard</h1>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-6">
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col items-end"
+              >
+                <div className="flex items-center space-x-4">
+                  {user.subscriptionStatus === 'trialing' && (
+                    <div className="flex items-center space-x-2 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-full">
+                      <Clock className="w-3 h-3 text-orange-500" />
+                      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{daysLeft} dias de teste</span>
+                    </div>
+                  )}
+                  {user.subscriptionStatus === 'active' && user.plan && user.plan !== 'trial' && (
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      onClick={() => setView('subscription')}
+                      className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border transition-all ${
+                        user.plan === 'premium'
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                          : 'bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20'
+                      }`}
+                    >
+                      <Star className="w-3 h-3 fill-current" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">
+                        Cliente {user.plan === 'premium' ? 'Premium' : 'Pro'} ✓
+                      </span>
+                    </motion.button>
+                  )}
+                  {user.subscriptionStatus === 'trialing' && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setView('subscription')}
+                      className="flex items-center space-x-2 px-4 py-2 bg-orange-500/10 border border-orange-500/20 rounded-full text-orange-500 text-xs font-bold hover:bg-orange-500/20 transition-all"
+                    >
+                      <Star className="w-3.5 h-3.5 fill-orange-500" />
+                      <span>Upgrade</span>
+                    </motion.button>
+                  )}
+                  <div className="bg-zinc-900/50 border border-zinc-800 px-4 py-2 rounded-full flex items-center space-x-2">
+                    <Zap className="w-4 h-4 text-[#ff4d00] fill-[#ff4d00]" />
+                    <motion.span
+                      key={user.vorixScore}
+                      initial={{ scale: 1.2, color: '#ffffff' }}
+                      animate={{ scale: 1, color: '#ff4d00' }}
+                      className="text-xs font-bold uppercase tracking-wider"
+                    >
+                      {user.vorixScore} PONTOS
+                    </motion.span>
+                  </div>
+                  <div className="bg-zinc-900/50 border border-zinc-800 px-4 py-2 rounded-full flex items-center space-x-2">
+                    <motion.div
+                      animate={streakInfo.animate}
+                      transition={{ repeat: Infinity, duration: streakInfo.needsUpdate ? 1 : 3 }}
+                      className={`${streakInfo.colorClass} ${streakInfo.glowClass}`}
+                    >
+                      <Flame className="w-4 h-4 fill-current" />
+                    </motion.div>
+                    <span className="text-bold text-xs uppercase tracking-wider">
+                      {streakInfo.currentStreak || 0} Dias
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1 mr-2">
+                  Nível {Math.floor((user.vorixScore || 0) / 1000) + 1}
+                </span>
+              </motion.div>
+
+              <div className="flex items-center space-x-4 pl-6 border-l border-zinc-800">
+                <div className="text-right">
+                  <p className="text-sm font-bold text-white leading-none">{user.username}</p>
+                  <p className={`text-[10px] uppercase tracking-widest mt-1 ${user.subscriptionStatus === 'trialing' ? 'text-orange-500' : 'text-emerald-500'}`}>
+                    {user.subscriptionStatus === 'trialing' ? 'Período de Teste' : 'Premium'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setView('settings')}
+                  className="w-10 h-10 rounded-xl overflow-hidden border-2 border-zinc-800 hover:border-orange-500 transition-all"
+                >
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt={user.username} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                      <UserIcon className="w-5 h-5 text-zinc-500" />
+                    </div>
+                  )}
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowAdd(true)}
+                className="flex bg-[#ff4d00] hover:bg-[#e64500] text-white px-6 py-2.5 rounded-full text-sm font-bold items-center space-x-2 transition-all active:scale-95 shadow-lg shadow-[#ff4d00]/20"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Lançar</span>
+              </button>
+            </div>
+          </header>
+        )}
 
         {view === 'dashboard' && (
-          <div className="space-y-4 lg:space-y-8">
-            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between space-y-2 lg:space-y-0">
-              <div className="space-y-0.5">
-                <h2 className="text-lg lg:text-4xl font-bold tracking-tight">Dashboard</h2>
-                <p className="text-zinc-500 text-[9px] lg:text-lg">Bem-vindo de volta ao seu centro de comando financeiro.</p>
+          <div className={isMobile ? 'space-y-0' : 'space-y-8 px-3 py-3'}>
+
+            {/* ── Desktop heading + export button ── */}
+            {!isMobile && (
+              <div className="flex flex-row items-end justify-between">
+                <div className="space-y-1">
+                  <h2 className="text-4xl font-bold tracking-tight">Dashboard</h2>
+                  <p className="text-zinc-500 text-lg">Bem-vindo de volta ao seu centro de comando financeiro.</p>
+                </div>
+                <button
+                  onClick={() => setShowExportModal(true)}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all text-xs font-bold"
+                >
+                  <Download className="w-3 h-3" />
+                  <span>Exportar Relatório (PDF)</span>
+                </button>
               </div>
-              <button 
-                onClick={() => setShowExportModal(true)}
-                className="flex items-center justify-center space-x-2 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all text-[9px] lg:text-xs font-bold w-full lg:w-auto"
-              >
-                <Download className="w-3 h-3" />
-                <span>Exportar Relatório (PDF)</span>
-              </button>
-            </div>
+            )}
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 lg:gap-6">
-              <motion.div 
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -3 }}
-                className="bg-zinc-900/40 border border-zinc-800/50 p-3 lg:p-8 rounded-xl lg:rounded-3xl space-y-1.5 lg:space-y-4 relative overflow-hidden group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5 lg:space-y-1">
-                    <span className="text-zinc-500 text-[8px] lg:text-sm font-medium">Saldo Total</span>
-                    <p className="text-base lg:text-4xl font-bold tracking-tighter truncate">{formatCurrency(totalBalance)}</p>
-                  </div>
-                  <div className="p-1.5 lg:p-4 bg-orange-600/10 rounded-lg lg:rounded-2xl border border-orange-600/20">
-                    <Wallet className="text-orange-500 w-3.5 h-3.5 lg:w-8 lg:h-8" />
-                  </div>
-                </div>
-              </motion.div>
-
-              <motion.div 
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                whileHover={{ y: -3 }}
-                className="bg-zinc-900/40 border border-zinc-800/50 p-3 lg:p-8 rounded-xl lg:rounded-3xl space-y-1.5 lg:space-y-4 relative overflow-hidden group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5 lg:space-y-1">
-                    <span className="text-zinc-500 text-[8px] lg:text-sm font-medium">Entradas (Mês)</span>
-                    <p className="text-base lg:text-4xl font-bold tracking-tighter truncate text-emerald-500">{formatCurrency(monthlyIncome)}</p>
-                    <div className="flex items-center text-emerald-500 text-[7px] lg:text-xs font-bold mt-0.5 lg:mt-2">
-                      <ArrowUp className="w-2 h-2 lg:w-2.5 lg:h-2.5 mr-1" />
-                      <span>12% <span className="text-zinc-500 font-medium ml-1">vs mês anterior</span></span>
+            {/* ── Desktop Stats Grid ── */}
+            {!isMobile && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -3 }}
+                  className="bg-zinc-900/40 border border-zinc-800/50 p-8 rounded-3xl space-y-4 relative overflow-hidden group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <span className="text-zinc-500 text-sm font-medium">Saldo Total</span>
+                      <p className="text-4xl font-bold tracking-tighter truncate">{formatCurrency(totalBalance)}</p>
+                    </div>
+                    <div className="p-4 bg-orange-600/10 rounded-2xl border border-orange-600/20">
+                      <Wallet className="text-orange-500 w-8 h-8" />
                     </div>
                   </div>
-                  <div className="p-1.5 lg:p-4 bg-emerald-500/10 rounded-lg lg:rounded-2xl border border-emerald-500/20">
-                    <ArrowUp className="text-emerald-500 w-3.5 h-3.5 lg:w-8 lg:h-8" />
-                  </div>
-                </div>
-              </motion.div>
-
-              <motion.div 
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                whileHover={{ y: -3 }}
-                className="bg-zinc-900/40 border border-zinc-800/50 p-3 lg:p-8 rounded-xl lg:rounded-3xl space-y-1.5 lg:space-y-4 relative overflow-hidden group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5 lg:space-y-1">
-                    <span className="text-zinc-500 text-[8px] lg:text-sm font-medium">Saídas (Mês)</span>
-                    <p className="text-base lg:text-4xl font-bold tracking-tighter truncate text-rose-500">{formatCurrency(monthlyExpenses)}</p>
-                    <div className="flex items-center text-rose-500 text-[7px] lg:text-xs font-bold mt-0.5 lg:mt-2">
-                      <ArrowDown className="w-2 h-2 lg:w-2.5 lg:h-2.5 mr-1" />
-                      <span>5% <span className="text-zinc-500 font-medium ml-1">vs mês anterior</span></span>
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  whileHover={{ y: -3 }}
+                  className="bg-zinc-900/40 border border-zinc-800/50 p-8 rounded-3xl space-y-4 relative overflow-hidden group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <span className="text-zinc-500 text-sm font-medium">Entradas (Mês)</span>
+                      <p className="text-4xl font-bold tracking-tighter truncate text-emerald-500">{formatCurrency(monthlyIncome)}</p>
+                      <div className="flex items-center text-emerald-500 text-xs font-bold mt-2">
+                        <ArrowUp className="w-2.5 h-2.5 mr-1" />
+                        <span>12% <span className="text-zinc-500 font-medium ml-1">vs mês anterior</span></span>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
+                      <ArrowUp className="text-emerald-500 w-8 h-8" />
                     </div>
                   </div>
-                  <div className="p-1.5 lg:p-4 bg-blue-500/10 rounded-lg lg:rounded-2xl border border-blue-500/20">
-                    <ArrowDown className="text-blue-500 w-3.5 h-3.5 lg:w-8 lg:h-8" />
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  whileHover={{ y: -3 }}
+                  className="bg-zinc-900/40 border border-zinc-800/50 p-8 rounded-3xl space-y-4 relative overflow-hidden group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <span className="text-zinc-500 text-sm font-medium">Saídas (Mês)</span>
+                      <p className="text-4xl font-bold tracking-tighter truncate text-rose-500">{formatCurrency(monthlyExpenses)}</p>
+                      <div className="flex items-center text-rose-500 text-xs font-bold mt-2">
+                        <ArrowDown className="w-2.5 h-2.5 mr-1" />
+                        <span>5% <span className="text-zinc-500 font-medium ml-1">vs mês anterior</span></span>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-blue-500/10 rounded-2xl border border-blue-500/20">
+                      <ArrowDown className="text-blue-500 w-8 h-8" />
+                    </div>
                   </div>
+                </motion.div>
+              </div>
+            )}
+
+            {/* ── MOBILE: Accounts Carousel ── */}
+            {isMobile && accounts.length > 0 && (
+              <div className="px-4 pb-2">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-white">Minhas Contas</h3>
+                  <button onClick={() => setView('accounts')} className="text-[11px] font-bold text-[#ff4d00] flex items-center space-x-0.5">
+                    <span>Ver todas</span>
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
                 </div>
-              </motion.div>
-            </div>
+                <div className="flex space-x-3 overflow-x-auto scrollbar-hide pb-1">
+                  {accounts.map((account, index) => (
+                    <motion.div
+                      key={account.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.08 }}
+                      className="account-card-gradient rounded-2xl p-4 min-w-[185px] flex-shrink-0"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+                          style={{ backgroundColor: account.cor ? account.cor + '22' : 'rgba(255,77,0,0.13)', border: `1px solid ${account.cor || '#ff4d00'}33` }}
+                        >
+                          {account.tipo === 'poupanca' ? <PiggyBank className="w-4 h-4" style={{ color: account.cor || '#ff4d00' }} /> :
+                           account.tipo === 'investimento' ? <TrendingUp className="w-4 h-4" style={{ color: account.cor || '#ff4d00' }} /> :
+                           <Landmark className="w-4 h-4" style={{ color: account.cor || '#ff4d00' }} />}
+                        </div>
+                        <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                      </div>
+                      <p className="text-zinc-400 text-[10px] font-semibold uppercase tracking-wider mb-0.5 truncate">{account.name}</p>
+                      <p className="text-white text-xl font-black tracking-tight">{formatCurrency(account.balance)}</p>
+                      <p className="text-zinc-500 text-[9px] font-medium mt-1 capitalize">
+                        {account.tipo === 'corrente' ? 'Conta Corrente' : account.tipo === 'poupanca' ? 'Poupança' : account.tipo === 'investimento' ? 'Investimento' : 'Conta'}
+                      </p>
+                    </motion.div>
+                  ))}
+                  {/* Add account card */}
+                  <motion.button
+                    whileTap={{ scale: 0.93 }}
+                    onClick={() => { setView('accounts'); }}
+                    className="min-w-[130px] flex-shrink-0 rounded-2xl border border-dashed border-zinc-700 flex flex-col items-center justify-center space-y-2 bg-zinc-900/30 active:bg-zinc-800/50 transition-all"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center">
+                      <Plus className="w-5 h-5 text-zinc-500" />
+                    </div>
+                    <span className="text-zinc-500 text-[10px] font-semibold">Nova Conta</span>
+                  </motion.button>
+                </div>
+              </div>
+            )}
+
+            {/* ── MOBILE: Empty accounts CTA ── */}
+            {isMobile && accounts.length === 0 && (
+              <div className="px-4 pb-3">
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setView('accounts')}
+                  className="w-full account-card-gradient rounded-2xl p-5 flex items-center space-x-4"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-[#ff4d00]/15 border border-[#ff4d00]/20 flex items-center justify-center">
+                    <Landmark className="w-6 h-6 text-[#ff4d00]" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-white font-bold text-sm">Adicionar Conta</p>
+                    <p className="text-zinc-500 text-[11px] mt-0.5">Conecte seu banco ou carteira</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-zinc-600 ml-auto" />
+                </motion.button>
+              </div>
+            )}
+
+            {/* ── MOBILE: Recent Transactions Premium ── */}
+            {isMobile && (
+              <div className="px-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-white">Transações Recentes</h3>
+                  <button onClick={() => setView('transactions')} className="text-[11px] font-bold text-[#ff4d00] flex items-center space-x-0.5">
+                    <span>Ver todas</span>
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+
+                {transactions.length === 0 ? (
+                  <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-8 text-center">
+                    <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                      <History className="w-6 h-6 text-zinc-600" />
+                    </div>
+                    <p className="text-zinc-500 text-sm font-medium">Nenhuma transação ainda</p>
+                    <p className="text-zinc-600 text-[11px] mt-1">Toque em + para registrar</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {(() => {
+                      const recentTx = transactions.slice(0, 8);
+                      const groups: Record<string, typeof recentTx> = {};
+                      recentTx.forEach(t => {
+                        const d = new Date(t.date?.seconds * 1000);
+                        const today = new Date();
+                        const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+                        let label = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+                        if (d.toDateString() === today.toDateString()) label = 'Hoje';
+                        else if (d.toDateString() === yesterday.toDateString()) label = 'Ontem';
+                        if (!groups[label]) groups[label] = [];
+                        groups[label].push(t);
+                      });
+                      const catColors: Record<string, string> = {
+                        'Alimentação': 'bg-orange-500/15 text-orange-400',
+                        'Transporte': 'bg-blue-500/15 text-blue-400',
+                        'Lazer': 'bg-purple-500/15 text-purple-400',
+                        'Saúde': 'bg-rose-500/15 text-rose-400',
+                        'Moradia': 'bg-amber-500/15 text-amber-400',
+                        'Educação': 'bg-cyan-500/15 text-cyan-400',
+                        'Salário': 'bg-emerald-500/15 text-emerald-400',
+                        'Investimento': 'bg-indigo-500/15 text-indigo-400',
+                      };
+                      return Object.entries(groups).map(([dateLabel, txs]) => (
+                        <div key={dateLabel}>
+                          <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mb-2 px-1">{dateLabel}</p>
+                          <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl overflow-hidden">
+                            {txs.map((t, idx) => (
+                              <motion.div
+                                key={t.id}
+                                initial={{ opacity: 0, x: -8 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: idx * 0.04 }}
+                                className={`flex items-center space-x-3 px-4 py-3.5 active:bg-zinc-800/60 transition-all ${
+                                  idx < txs.length - 1 ? 'border-b border-zinc-800/50' : ''
+                                }`}
+                              >
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                                  t.type === 'income'
+                                    ? (catColors['Salário'] || 'bg-emerald-500/15 text-emerald-400')
+                                    : (catColors[t.category] || 'bg-zinc-700/50 text-zinc-400')
+                                }`}>
+                                  {t.type === 'income'
+                                    ? <ArrowDownRight className="w-5 h-5" />
+                                    : <ArrowUpRight className="w-5 h-5" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-white font-bold text-sm leading-tight truncate">{t.description}</p>
+                                  <p className="text-zinc-500 text-[10px] font-semibold mt-0.5">{t.category}</p>
+                                </div>
+                                <div className="text-right flex-shrink-0">
+                                  <p className={`font-black text-sm ${
+                                    t.type === 'income' ? 'text-emerald-400' : 'text-rose-400'
+                                  }`}>
+                                    {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                                  </p>
+                                  <button
+                                    onClick={() => setShowDeleteConfirm({ id: t.id, type: 'transaction' })}
+                                    className="text-zinc-700 active:text-rose-500 transition-colors mt-1"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Streak Card Removed */}
 
@@ -3281,6 +3554,63 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onSubscriptionSucces
           </div>
         )}
       </AnimatePresence>
+
+      {/* ============================================================ */}
+      {/* BOTTOM TAB BAR — Mobile only (hidden on desktop)             */}
+      {/* ============================================================ */}
+      {isMobile && (
+        <nav className="bottom-tab-bar fixed bottom-0 left-0 right-0 z-50 lg:hidden">
+          <div className="flex items-center justify-around px-2 py-2 pb-safe">
+            {[
+              { id: 'dashboard', icon: Home, label: 'Início' },
+              { id: 'transactions', icon: History, label: 'Extrato' },
+              { id: '__add__', icon: Plus, label: '' },
+              { id: 'goals', icon: Target, label: 'Metas' },
+              { id: 'ia', icon: MessageCircle, label: 'IA' },
+            ].map((tab) => {
+              if (tab.id === '__add__') {
+                return (
+                  <motion.button
+                    key="add"
+                    whileTap={{ scale: 0.88 }}
+                    onClick={() => setShowAdd(true)}
+                    className="relative -mt-6 w-14 h-14 bg-[#ff4d00] rounded-2xl flex items-center justify-center shadow-xl shadow-[#ff4d00]/40 border-4 border-zinc-950"
+                  >
+                    <Plus className="w-7 h-7 text-white" />
+                  </motion.button>
+                );
+              }
+              const isActive = view === tab.id;
+              return (
+                <motion.button
+                  key={tab.id}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setView(tab.id as any)}
+                  className="flex flex-col items-center justify-center space-y-1 px-3 py-1 min-w-[52px]"
+                >
+                  <div className={`relative transition-all duration-200 ${isActive ? 'scale-110' : 'scale-100'}`}>
+                    <tab.icon className={`w-5 h-5 transition-colors ${isActive ? 'text-[#ff4d00]' : 'text-zinc-500'}`} />
+                    {isActive && (
+                      <motion.div
+                        layoutId="tab-indicator"
+                        className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#ff4d00] rounded-full"
+                      />
+                    )}
+                    {tab.id === 'ia' && (
+                      <span className="absolute -top-1 -right-2 w-3.5 h-3.5 bg-[#ff4d00] rounded-full border-2 border-zinc-950 flex items-center justify-center">
+                        <span className="text-[6px] font-black text-white">AI</span>
+                      </span>
+                    )}
+                  </div>
+                  <span className={`text-[9px] font-semibold transition-colors ${isActive ? 'text-[#ff4d00]' : 'text-zinc-600'}`}>
+                    {tab.label}
+                  </span>
+                </motion.button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
     </div>
   );
 };
