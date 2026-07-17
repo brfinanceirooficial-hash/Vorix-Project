@@ -108,9 +108,9 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user, onSucc
     },
     premium: {
       name: 'Plano Premium',
-      price: '0,99',
+      price: '17,99',
       period: 'por mês',
-      priceNum: 0.99,
+      priceNum: 17.99,
       features: ['Contas Ilimitadas', 'IA Ilimitada', 'Radar Completo', 'Relatórios Ilimitados (PDF)', 'Suporte Prioritário', 'Missões Exclusivas'],
     },
   };
@@ -302,7 +302,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({ user, onSucc
   if (isSubscribed) {
     const isPremium = user.plan === 'premium';
     const planFeatures = isPremium ? plans.premium.features : plans.pro.features;
-    const planPrice = isPremium ? '0,99' : '10,99';
+    const planPrice = isPremium ? '17,99' : '10,99';
 
     return (
       <div className="space-y-8 lg:space-y-10 pb-20">
